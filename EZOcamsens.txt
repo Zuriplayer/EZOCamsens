@@ -1,0 +1,15 @@
+## Title: E|cB040FFZ|rOcamsens
+## Author: @Zuriplayer
+## Version: 1.6.2
+## AddOnVersion: 10602
+## APIVersion: 101049
+## Description: Fine-tune controller camera sensitivity by axis and perspective, with separate presets for first-person and third-person view.
+## DependsOn: LibAddonMenu-2.0 LibChatMessage
+## OptionalDependsOn: LibDebugLogger
+## SavedVariables: EZOcamsens_SV
+EZOcamsens.lua
+core.lua
+menu.lua
+bindings.xml
+lang/es.lua
+lang/en.lua
