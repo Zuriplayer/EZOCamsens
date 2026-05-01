@@ -9,7 +9,8 @@ function ADDON:SetupMenu()
     name = "E|cB040FFZ|rOcamsens",
     author = ADDON:Text("AUTHOR"),
     version = ADDON.version,
-    registerForDefaults = true,
+    registerForRefresh = true,
+    registerForDefaults = false,
   }
   if not ADDON.lamPanel then
     ADDON.lamPanel = LAM:RegisterAddonPanel("EZOcamsensPanel", panelData)
@@ -20,17 +21,9 @@ function ADDON:SetupMenu()
 
     { type="header", name=ADDON:Text("PRESETS_HEADER") },
     { type="description", text=ADDON:Text("APPLY_HINT") },
-    { type="submenu", name=ADDON:Text("FP_HEADER"), controls = {
-      { type="slider", name=ADDON:Text("FP_H"), min=0.10, max=5.0, step=0.05, decimals=2,
-      getFunc=function() return ADDON.sv.fpH end, setFunc=function(v) ADDON.sv.fpH=v end, default=1.20 },
-      { type="slider", name=ADDON:Text("FP_V"), min=0.10, max=5.0, step=0.05, decimals=2,
-      getFunc=function() return ADDON.sv.fpV end, setFunc=function(v) ADDON.sv.fpV=v end, default=1.20 },
-    }},
     { type="submenu", name=ADDON:Text("TP_HEADER"), controls = {
-      { type="slider", name=ADDON:Text("TP_H"), min=0.10, max=5.0, step=0.05, decimals=2,
+      { type="slider", name=ADDON:Text("TP_H"), min=0.10, max=5.0, step=0.01, decimals=2,
       getFunc=function() return ADDON.sv.tpH end, setFunc=function(v) ADDON.sv.tpH=v end, default=1.60 },
-      { type="slider", name=ADDON:Text("TP_V"), min=0.10, max=5.0, step=0.05, decimals=2,
-      getFunc=function() return ADDON.sv.tpV end, setFunc=function(v) ADDON.sv.tpV=v end, default=1.60 },
     }},
     { type="button", name=ADDON:Text("APPLY_NOW"), func=function() ADDON:ApplyPresets() end },
 
@@ -44,32 +37,16 @@ function ADDON:SetupMenu()
       getFunc=function() return ADDON.sv.chatEnabled end,
       setFunc=function(v) ADDON.sv.chatEnabled=v; if (ADDON.chat) then ADDON.chat:SetEnabled(v) end end, default=true },
 
-    { type="header", name=ADDON:Text("ADVANCED") },
-    { type="slider", name=ADDON:Text("CAP_SLIDER"),
-      tooltip=ADDON:Text("CAP_TT"),
-      min=1.0, max=5.0, step=0.05, decimals=2,
-      getFunc=function() return ADDON.sv.capMultiplier end,
-      setFunc=function(v) ADDON.sv.capMultiplier=v; ADDON:ApplyCaps() end, default=2.0 },
-
-    { type="checkbox", name=ADDON:Text("CAP_AUTO"),
-      tooltip=ADDON:Text("CAP_AUTO_TT"),
-      getFunc=function() return ADDON.sv.autoApplyCapsOnLoad end,
-      setFunc=function(v) ADDON.sv.autoApplyCapsOnLoad=v end, default=false },
-
-    { type="button", name=ADDON:Text("CAP_APPLY_NOW"), func=function() ADDON:ApplyCaps() end },
-
-    { type="checkbox", name=ADDON:Text("FALLBACK"),
-      tooltip=ADDON:Text("FALLBACK_TT"),
-      getFunc=function() return ADDON.sv.useCVarsFallback end,
-      setFunc=function(v) ADDON.sv.useCVarsFallback=v end, default=true },
-
-    { type="checkbox", name=ADDON:Text("VERBOSE"),
-      tooltip=ADDON:Text("VERBOSE_TT"),
-      getFunc=function() return ADDON.sv.verbose end, setFunc=function(v) ADDON.sv.verbose=v end, default=false },
+    { type="header", name=ADDON:Text("SUPPORT") },
+    { type="checkbox", name=ADDON:Text("DEBUG_MODE"),
+      tooltip=ADDON:Text("DEBUG_MODE_TT"),
+      getFunc=function() return ADDON:IsDebugModeEnabled() end,
+      setFunc=function(v) ADDON:SetDebugModeEnabled(v) end, default=false },
 
     { type="button", name=ADDON:Text("SHOW_STATUS"), func=function() ADDON:PrintStatus() end },
-    { type="button", name=ADDON:Text("DUMP_BUTTON"), func=function() ADDON:DumpCameraDiagnostics() end },
-    { type="button", name=ADDON:Text("PROBE_BUTTON"), func=function() ADDON:ProbeCameraControls() end },
+    { type="button", name=ADDON:Text("DUMP_BUTTON"),
+      func=function() ADDON:DumpCameraDiagnostics() end,
+      disabled=function() return not ADDON:IsDebugModeEnabled() end },
 
     { type="header", name=ADDON:Text("MAINTENANCE") },
     { type="dropdown", name=ADDON:Text("LANG_DD"),

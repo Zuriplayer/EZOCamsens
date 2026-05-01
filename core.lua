@@ -10,141 +10,264 @@ end
 
 local function info(msg)
   if EZOcamsens and EZOcamsens.chat then
-    EZOcamsens.chat:Print("|cAFC7E8[EZOcamsens]|r " .. msg)
+    EZOcamsens.chat:Print(tostring(msg))
+  else
+    d("|cAFC7E8[EZOcamsens]|r " .. tostring(msg))
+  end
+end
+
+local function safeChat(msg)
+  if EZOcamsens and EZOcamsens.chat then
+    EZOcamsens.chat:Print(tostring(msg))
+  else
+    d("|cAFC7E8[EZOcamsens]|r " .. tostring(msg))
   end
 end
 
 local function warnRed(msg)
   if EZOcamsens and EZOcamsens.chat then
-    EZOcamsens.chat:Print("|cD89B3C[EZOcamsens]|r " .. msg)
+    EZOcamsens.chat:Print("|cD89B3C" .. tostring(msg) .. "|r")
   else
-    d("|cD89B3C[EZOcamsens]|r " .. msg)
+    d("|cD89B3C[EZOcamsens]|r " .. tostring(msg))
   end
 end
 
 function ADDON:InitLogger()
-  local ok, LDL = pcall(function() return LibDebugLogger end)
-  if ok and LDL then self.logger = LDL(self.name) end
+  self:InitializeDebug()
+end
+
+function ADDON:EnsureDebugLogger()
+  self.runtime = self.runtime or {}
+  if self.runtime.debugLogger then
+    self.logger = self.runtime.debugLogger
+    return self.runtime.debugLogger
+  end
+
+  local ok, logger = pcall(function()
+    if not LibDebugLogger then
+      return nil
+    end
+
+    local created = LibDebugLogger(self.name)
+    if created and type(created.SetMinLevelOverride) == "function" and LibDebugLogger.LOG_LEVEL_DEBUG ~= nil then
+      created:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_DEBUG)
+    end
+    if created and type(created.SetLogTracesOverride) == "function" then
+      created:SetLogTracesOverride(false)
+    end
+    return created
+  end)
+
+  if ok and logger then
+    self.runtime.debugLogger = logger
+    self.logger = logger
+    return logger
+  end
+
+  return nil
+end
+
+function ADDON:InitializeDebug()
+  self.runtime = self.runtime or {}
+  self:EnsureDebugLogger()
+end
+
+function ADDON:RefreshDebugLoggerState()
+  local logger = self:EnsureDebugLogger()
+  if not logger then return end
+  if logger.SetEnabled then
+    logger:SetEnabled(true)
+  end
+end
+
+local function isDebugEnabled()
+  return EZOcamsens and EZOcamsens.IsDebugModeEnabled and EZOcamsens:IsDebugModeEnabled()
 end
 
 local function dbg(fmt, ...)
-  if EZOcamsens and EZOcamsens.logger and EZOcamsens.sv and EZOcamsens.sv.verbose then
-    EZOcamsens.logger:Debug(string.format(fmt, ...))
+  if EZOcamsens and isDebugEnabled() then
+    local logger = EZOcamsens:EnsureDebugLogger()
+    if logger and logger.Debug then
+      logger:Debug(string.format(fmt, ...))
+    end
   end
+end
+
+function ADDON:SafeDebugViewer(msg, subTag)
+  local logger = self:EnsureDebugLogger()
+  if not logger then
+    return false
+  end
+
+  local ok = pcall(function()
+    if type(logger.SetSubTag) == "function" then
+      logger:SetSubTag(subTag)
+    end
+
+    if type(logger.Debug) == "function" then
+      logger:Debug(tostring(msg))
+    elseif type(logger.Info) == "function" then
+      logger:Info(tostring(msg))
+    else
+      error("LibDebugLogger logger has no Debug/Info method")
+    end
+
+    if type(logger.SetSubTag) == "function" then
+      logger:SetSubTag(nil)
+    end
+  end)
+
+  return ok
+end
+
+function ADDON:DebugPrint(msg, subTag)
+  safeChat(msg)
+  if isDebugEnabled() then
+    self:SafeDebugViewer(msg, subTag or "Debug")
+  end
+end
+
+function ADDON:CreateDebugBatch(subTag)
+  return {
+    subTag = subTag or "Debug",
+    lines = {},
+  }
+end
+
+function ADDON:DebugBatchAdd(batch, msg)
+  if type(batch) ~= "table" then
+    self:DebugPrint(msg, "Debug")
+    return
+  end
+
+  msg = tostring(msg)
+  safeChat(msg)
+  batch.lines[#batch.lines + 1] = msg
+end
+
+function ADDON:DebugBatchFlush(batch)
+  if not isDebugEnabled() then return end
+  if type(batch) ~= "table" or type(batch.lines) ~= "table" or #batch.lines == 0 then
+    return
+  end
+
+  self:SafeDebugViewer(table.concat(batch.lines, "\n"), batch.subTag or "Debug")
 end
 
 local STR = {
   es = {
-    DESC = "Presets de sensibilidad de camara con mando para primera y tercera persona.",
+    DESC = "Controla la sensibilidad horizontal de camara con mando en tercera persona.",
     AUTHOR = "Por: @Zuriplayer",
-    PRESETS_HEADER = "Presets de camara",
-    FP_HEADER = "Primera persona",
+    PRESETS_HEADER = "Tercera persona horizontal",
     TP_HEADER = "Tercera persona",
-    FP_H = "Horizontal",
-    FP_V = "Vertical",
-    TP_H = "Horizontal",
-    TP_V = "Vertical",
-    APPLY_NOW = "Aplicar presets",
-    APPLY_HINT = "Los cambios se aplican al pulsar este boton. EZOcamsens intenta usar primero los controles nativos de gamepad del juego y recurre a las CVars solo como respaldo.",
+    TP_H = "Sensibilidad horizontal",
+    APPLY_NOW = "Aplicar ajuste",
+    APPLY_HINT = "Mueve el valor y pulsa Aplicar ajuste. El addon intenta usar primero el control nativo del juego y recurre a la CVar solo si hace falta.",
     BEHAVIOR = "Comportamiento",
-    ADVANCED = "Avanzado",
-    CAP_SLIDER = "Limite maximo de sensibilidad (mando)",
-    CAP_TT = "Amplia el maximo disponible en los controles nativos de mando para permitir sensibilidades mas altas.",
-    CAP_AUTO = "Aplicar limite ampliado al cargar",
-    CAP_AUTO_TT = "Activalo solo si quieres que el addon ajuste ese limite automaticamente al iniciar.",
-    CAP_APPLY_NOW = "Refrescar limite ampliado",
     ONLY_GP = "Aplicar sólo en modo gamepad",
     ONLY_GP_TT = "Evita cambios si no estás jugando con mando.",
-    FALLBACK = "Metodo alternativo de aplicacion",
-    FALLBACK_TT = "Usa una via alternativa si el ajuste normal no entra bien en tu version del juego.",
     CHAT_MSG = "Mostrar mensajes en chat",
-    VERBOSE = "Modo debug",
-    VERBOSE_TT = "Guarda trazas tecnicas en LibDebugLogger. Para uso normal, mejor dejarlo apagado.",
+    SUPPORT = "Soporte y debug",
+    DEBUG_MODE = "Activar modo debug",
+    DEBUG_MODE_TT = "Habilita de forma persistente las funciones de debug del addon y envía trazas de nivel debug a LibDebugLogger para verlas en DebugLogViewer.",
     SHOW_STATUS = "Mostrar valores actuales",
     MAINTENANCE = "Idioma y restauracion",
     RESTORE_DEFAULTS = "Restaurar valores por defecto",
-    RESTORE_WARN = "Se restaurarán los valores de sensibilidad y opciones.",
+    RESTORE_WARN = "Se restaurará la sensibilidad horizontal de tercera persona al valor por defecto del juego y también las opciones del addon.",
     LANG_DD = "Selecciona idioma",
     LANG_AUTO = "Automático (cliente)",
     LANG_ES = "Español",
     LANG_EN = "English",
-    CMD_HELP = "uso: /ezocamsens status  |  /ezocamsens apply",
+    CMD_HELP = "uso: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump]",
     LANG_NOTICE = "Para aplicar el cambio de idioma se recargará la interfaz.",
+    DEBUG_MODE_DISABLED = "El modo debug está desactivado. Actívalo en la configuración del addon para usar /ezocamsens debug.",
+    DEBUG_TITLE = "Comandos de diagnóstico:",
+    DEBUG_CMD_DUMP = "  /ezocamsens debug dump        - volcado técnico de cámara a DebugLogViewer",
     EXTERNAL_DIFF = "Se detectaron valores de sensibilidad distintos a los guardados. Otro addon o el usuario pudo haberlos cambiado.",
-    DEFAULTS_RESTORED = "Valores por defecto restaurados.",
-    APPLY_DONE = "Presets aplicados.",
-    APPLY_FMT = "Aplicado 1ª(H/V)=%s/%s [%s/%s]  3ª(H/V)=%s/%s [%s/%s]",
-    APPLY_SUMMARY = "Objetivo 1ª=%s/%s 3ª=%s/%s | Real 1ª=%s/%s 3ª=%s/%s",
-    APPLY_METHODS = "Metodo: 1ªH=%s 1ªV=%s 3ªH=%s 3ªV=%s",
-    STATUS_SAVED = "Guardado 1ª(H/V)=%s/%s   3ª(H/V)=%s/%s",
-    STATUS_REAL = "Actual   1ª(H/V)=%s/%s   3ª(H/V)=%s/%s",
+    DEFAULTS_RESTORED = "Sensibilidad horizontal de tercera persona restaurada al valor por defecto del juego.",
+    APPLY_DONE = "Ajuste aplicado.",
+    APPLY_FMT = "Aplicado 3ª horizontal=%s [%s]",
+    APPLY_SUMMARY = "Objetivo 3ª horizontal=%s | Real=%s",
+    APPLY_METHODS = "Metodo 3ª horizontal=%s",
+    APPLY_SOURCE = "Fuente de lectura 3ª horizontal=%s",
+    CLAMP_WARN = "Algunos objetivos se ajustaron al maximo disponible en el juego: %s",
+    STATUS_SAVED = "Guardado 3ª horizontal=%s",
+    STATUS_REAL = "Actual   3ª horizontal=%s",
+    STATUS_NATIVE = "Nativo   3ª horizontal=%s",
+    STATUS_CVAR = "CVar     3ª horizontal=%s",
+    STATUS_SOURCE = "Fuente efectiva 3ª horizontal=%s",
+    STATUS_DIVERGED = "El valor nativo y la CVar no coinciden; el juego o la UI pueden estar usando rutas distintas.",
     GAMEPAD_ONLY_WARN = "Accion bloqueada: activa el modo gamepad o desmarca la opcion de aplicar solo en gamepad.",
+    METHOD_NATIVE = "nativo",
     METHOD_FALLBACK = "alternativo",
     METHOD_UNCHANGED = "sin cambio",
+    SOURCE_SETTING = "setting",
+    SOURCE_CVAR = "cvar",
+    SOURCE_NONE = "sin fuente",
+    NATIVE_ID_MISSING = "No se detecto el control nativo de 3ª horizontal; se intentará aplicar por CVar.",
+    NATIVE_ID_FALLBACK_INFO = "No se detectó el control nativo de 3ª horizontal. Se ha aplicado la CVar como respaldo.",
     BUILD_NO_SLIDERS = "No pude acceder a los controles nativos de sensibilidad en esta version del juego.",
-    IDS_FMT = "Claves detectadas: 1ª(H)=%s 1ª(V)=%s 3ª(H)=%s 3ª(V)=%s",
-    CAPS_FMT = "Topes aplicados en %d sliders de sensibilidad (max. aprox. %.2f).",
+    IDS_FMT = "Clave detectada: 3ª(H)=%s",
     DUMP_BUTTON = "Volcar diagnostico de camara",
-    DUMP_DONE = "Diagnostico de camara enviado a LibDebugLogger.",
+    DUMP_DONE = "Diagnostico de camara enviado a DebugLogViewer mediante LibDebugLogger.",
     DUMP_NEEDS_DEBUG = "Activa primero el modo debug para generar el diagnostico.",
-    PROBE_BUTTON = "Sondear controles de camara",
-    PROBE_DONE = "Sondeo de camara enviado al chat.",
   },
   en = {
-    DESC = "Controller camera sensitivity presets for first-person and third-person view.",
+    DESC = "Controls third-person horizontal camera sensitivity for controller play.",
     AUTHOR = "By: @Zuriplayer",
-    PRESETS_HEADER = "Camera presets",
-    FP_HEADER = "First-person",
+    PRESETS_HEADER = "Third-person horizontal",
     TP_HEADER = "Third-person",
-    FP_H = "Horizontal",
-    FP_V = "Vertical",
-    TP_H = "Horizontal",
-    TP_V = "Vertical",
-    APPLY_NOW = "Apply presets",
-    APPLY_HINT = "Changes are applied when you press this button. EZOcamsens first tries the native gamepad controls and only falls back to CVars if needed.",
+    TP_H = "Horizontal sensitivity",
+    APPLY_NOW = "Apply setting",
+    APPLY_HINT = "Move the value and press Apply setting. The addon first tries the native in-game control and only falls back to the CVar if needed.",
     BEHAVIOR = "Behavior",
-    ADVANCED = "Advanced",
-    CAP_SLIDER = "Maximum sensitivity limit (gamepad)",
-    CAP_TT = "Extends the native gamepad limit so higher sensitivity values are available when needed.",
-    CAP_AUTO = "Apply extended limit on load",
-    CAP_AUTO_TT = "Enable only if you want the addon to adjust that limit automatically at startup.",
-    CAP_APPLY_NOW = "Refresh extended limit",
     ONLY_GP = "Apply only in gamepad mode",
     ONLY_GP_TT = "Prevents changes if you are not playing with a controller.",
-    FALLBACK = "Alternative apply method",
-    FALLBACK_TT = "Uses an alternative path if the normal in-game adjustment does not work reliably on your build.",
     CHAT_MSG = "Show feedback in chat",
-    VERBOSE = "Debug mode",
-    VERBOSE_TT = "Stores technical traces in LibDebugLogger. Best left off during normal play.",
+    SUPPORT = "Support & debug",
+    DEBUG_MODE = "Enable debug mode",
+    DEBUG_MODE_TT = "Persistently enables the addon's debug features and sends debug-level traces to LibDebugLogger so they are visible in DebugLogViewer.",
     SHOW_STATUS = "Show current values",
     MAINTENANCE = "Language & reset",
     RESTORE_DEFAULTS = "Restore defaults",
-    RESTORE_WARN = "Sensitivity and options will be restored.",
+    RESTORE_WARN = "Third-person horizontal sensitivity will be restored to the game's default value, along with the addon options.",
     LANG_DD = "Select language",
     LANG_AUTO = "Automatic (client)",
     LANG_ES = "Spanish",
     LANG_EN = "English",
-    CMD_HELP = "usage: /ezocamsens status  |  /ezocamsens apply",
+    CMD_HELP = "usage: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump]",
     LANG_NOTICE = "The UI will reload to apply the language change.",
+    DEBUG_MODE_DISABLED = "Debug mode is disabled. Enable it in the addon settings to use /ezocamsens debug.",
+    DEBUG_TITLE = "Diagnostic commands:",
+    DEBUG_CMD_DUMP = "  /ezocamsens debug dump        - camera technical dump to DebugLogViewer",
     EXTERNAL_DIFF = "Sensitivity values differ from saved presets. Another addon or the user may have changed them.",
-    DEFAULTS_RESTORED = "Default values restored.",
-    APPLY_DONE = "Presets applied.",
-    APPLY_FMT = "Applied 1st(H/V)=%s/%s [%s/%s]  3rd(H/V)=%s/%s [%s/%s]",
-    APPLY_SUMMARY = "Target 1st=%s/%s 3rd=%s/%s | Actual 1st=%s/%s 3rd=%s/%s",
-    APPLY_METHODS = "Method: 1stH=%s 1stV=%s 3rdH=%s 3rdV=%s",
-    STATUS_SAVED = "Saved   1st(H/V)=%s/%s   3rd(H/V)=%s/%s",
-    STATUS_REAL = "Current 1st(H/V)=%s/%s   3rd(H/V)=%s/%s",
+    DEFAULTS_RESTORED = "Third-person horizontal sensitivity restored to the game's default value.",
+    APPLY_DONE = "Setting applied.",
+    APPLY_FMT = "Applied 3rd horizontal=%s [%s]",
+    APPLY_SUMMARY = "Target 3rd horizontal=%s | Actual=%s",
+    APPLY_METHODS = "Method 3rd horizontal=%s",
+    APPLY_SOURCE = "Readback source 3rd horizontal=%s",
+    CLAMP_WARN = "Some targets were limited to the current in-game maximum: %s",
+    STATUS_SAVED = "Saved   3rd horizontal=%s",
+    STATUS_REAL = "Current 3rd horizontal=%s",
+    STATUS_NATIVE = "Native  3rd horizontal=%s",
+    STATUS_CVAR = "CVar    3rd horizontal=%s",
+    STATUS_SOURCE = "Effective source 3rd horizontal=%s",
+    STATUS_DIVERGED = "The native setting and the CVar differ; the game or UI may be using different paths.",
     GAMEPAD_ONLY_WARN = "Action blocked: enable gamepad mode or disable the gamepad-only option.",
+    METHOD_NATIVE = "native",
     METHOD_FALLBACK = "fallback",
     METHOD_UNCHANGED = "unchanged",
+    SOURCE_SETTING = "setting",
+    SOURCE_CVAR = "cvar",
+    SOURCE_NONE = "no source",
+    NATIVE_ID_MISSING = "The native 3rd-person horizontal control was not detected; the addon will try to apply via CVar.",
+    NATIVE_ID_FALLBACK_INFO = "The native 3rd-person horizontal control was not detected. The CVar fallback was applied.",
     BUILD_NO_SLIDERS = "Native sensitivity controls are not available in this game build.",
-    IDS_FMT = "Detected keys: 1st(H)=%s 1st(V)=%s 3rd(H)=%s 3rd(V)=%s",
-    CAPS_FMT = "Applied caps to %d sensitivity sliders (approx. max %.2f).",
+    IDS_FMT = "Detected key: 3rd(H)=%s",
     DUMP_BUTTON = "Dump camera diagnostics",
-    DUMP_DONE = "Camera diagnostics sent to LibDebugLogger.",
+    DUMP_DONE = "Camera diagnostics sent to DebugLogViewer via LibDebugLogger.",
     DUMP_NEEDS_DEBUG = "Enable debug mode first to generate diagnostics.",
-    PROBE_BUTTON = "Probe camera controls",
-    PROBE_DONE = "Camera probe sent to chat.",
   }
 }
 
@@ -174,6 +297,31 @@ function ADDON:RefreshLAM()
   end
 end
 
+function ADDON:ShowDebugCommandHelp()
+  safeChat(self:Text("DEBUG_TITLE"))
+  safeChat(self:Text("DEBUG_CMD_DUMP"))
+end
+
+function ADDON:ExecuteDebugCommand(sub)
+  if not isDebugEnabled() then
+    warnRed(self:Text("DEBUG_MODE_DISABLED"))
+    return true
+  end
+
+  sub = zo_strlower(sub or "")
+  if sub == "" or sub == "help" or sub == "?" then
+    self:ShowDebugCommandHelp()
+    return true
+  end
+
+  if sub == "dump" or sub == "diag" then
+    self:DumpCameraDiagnostics()
+    return true
+  end
+  self:ShowDebugCommandHelp()
+  return true
+end
+
 local function isGamepad()
   local ok, res = pcall(IsInGamepadPreferredMode)
   if ok then return res end
@@ -184,12 +332,37 @@ local function guardGamepad()
   return not (ADDON.sv and ADDON.sv.applyOnlyInGamepad and not isGamepad())
 end
 
-ADDON.ids = { FP_H = nil, FP_V = nil, TP_H = nil, TP_V = nil }
+ADDON.ids = { TP_H = nil }
+local TARGET_MIN = 0.10
+local TARGET_MAX = 5.00
+local NATIVE_RANGE_MAX = 5.00
 
 local function tolowerLocal(s)
   if type(s) == "number" then s = GetString(s) end
   if type(s) ~= "string" then return "" end
   return zo_strlower(zo_strformat("<<Z:1>>", s))
+end
+
+local function buildSearchText(entry)
+  if type(entry) ~= "table" then return "" end
+  local parts = {
+    tolowerLocal(entry.name),
+    tolowerLocal(entry.text),
+    tolowerLocal(entry.gamepadTextOverride),
+    tolowerLocal(entry.tooltipText),
+  }
+  return table.concat(parts, " ")
+end
+
+local function isThirdHorizontalCameraSlider(entry)
+  if type(entry) ~= "table" or entry.controlType ~= OPTIONS_SLIDER then
+    return false
+  end
+
+  local text = buildSearchText(entry)
+  if text == "" then return false end
+  return (text:find("third", 1, true) or text:find("tercera", 1, true))
+     and text:find("horizontal", 1, true)
 end
 
 function ADDON:DiscoverCameraSliders()
@@ -200,67 +373,50 @@ function ADDON:DiscoverCameraSliders()
   end
 
   for id, data in pairs(CCD[SETTING_TYPE_GAMEPAD]) do
-    if type(data) == "table" and data.controlType == OPTIONS_SLIDER then
-      local name = tolowerLocal(data.name or data.text)
-      if name ~= "" then
-        if (name:find("first") or name:find("primera")) then
-          if name:find("horizontal") then ADDON.ids.FP_H = id end
-          if name:find("vertical") then ADDON.ids.FP_V = id end
-        elseif (name:find("third") or name:find("tercera")) then
-          if name:find("horizontal") then ADDON.ids.TP_H = id end
-          if name:find("vertical") then ADDON.ids.TP_V = id end
-        end
-      end
+    if isThirdHorizontalCameraSlider(data) then
+      ADDON.ids.TP_H = id
+      break
     end
   end
 
-  dbg(self:Text("IDS_FMT"),
-    tostring(self.ids.FP_H or "n/a"),
-    tostring(self.ids.FP_V or "n/a"),
-    tostring(self.ids.TP_H or "n/a"),
-    tostring(self.ids.TP_V or "n/a"))
+  dbg(self:Text("IDS_FMT"), tostring(self.ids.TP_H or "n/a"))
+  self:EnsureNativeSliderRange()
 end
 
-local function setMax(controlData, newMax)
-  if controlData then
-    controlData.maxValue = newMax
-    controlData.valueFormat = "%.2f"
-    if ZO_Options_UpdateOption then ZO_Options_UpdateOption(controlData) end
-    return true
-  end
-  return false
-end
-
-function ADDON:ApplyCaps()
+function ADDON:EnsureNativeSliderRange()
   local CCD = ZO_OptionsPanel_Camera_ControlData
-  if not (CCD and CCD[SETTING_TYPE_GAMEPAD]) then return end
-
-  local mult = tonumber(self.sv and self.sv.capMultiplier) or 1.0
-  local base = 1.60
-  local newMax = base * mult
-
-  local raised = 0
-  local list = CCD[SETTING_TYPE_GAMEPAD]
-  for _, key in ipairs({ self.ids.FP_H, self.ids.FP_V, self.ids.TP_H, self.ids.TP_V }) do
-    if key and setMax(list[key], newMax) then raised = raised + 1 end
+  local list = CCD and CCD[SETTING_TYPE_GAMEPAD]
+  local entry = list and self.ids.TP_H and list[self.ids.TP_H]
+  if type(entry) ~= "table" then
+    return false
   end
 
-  dbg(self:Text("CAPS_FMT"), raised, newMax)
-  self:RefreshLAM()
-end
-
-function ADDON:MaybeApplyCapsOnLoad()
-  if self.sv and self.sv.autoApplyCapsOnLoad then
-    self:ApplyCaps()
+  local changed = false
+  local currentMin = tonumber(entry.minValue) or TARGET_MIN
+  local currentMax = tonumber(entry.maxValue) or NATIVE_RANGE_MAX
+  if currentMin ~= TARGET_MIN then
+    entry.minValue = TARGET_MIN
+    changed = true
   end
+  if currentMax < NATIVE_RANGE_MAX then
+    entry.maxValue = NATIVE_RANGE_MAX
+    changed = true
+  end
+  if entry.valueFormat ~= "%.2f" then
+    entry.valueFormat = "%.2f"
+    changed = true
+  end
+  if changed and ZO_Options_UpdateOption then
+    ZO_Options_UpdateOption(entry)
+  end
+  return changed
 end
 
 local CVAR = {
-  FP_H = "GamepadSensitivityFirstPersonX",
-  FP_V = "GamepadSensitivityFirstPersonY",
   TP_H = "GamepadSensitivityThirdPersonX",
-  TP_V = "GamepadSensitivityThirdPersonY",
 }
+
+local AXIS_ORDER = { "TP_H" }
 
 local function safeSet(settingType, id, value)
   if id then
@@ -291,71 +447,200 @@ end
 
 local function clamp(v)
   v = tonumber(v) or 1.00
-  if v < 0.10 then v = 0.10 end
+  if v < TARGET_MIN then v = TARGET_MIN end
   return v
 end
 
+local function readAxisSettingValue(axisKey)
+  local settingValue = safeGet(SETTING_TYPE_GAMEPAD, ADDON.ids[axisKey])
+  local settingNumber = tonumber(settingValue)
+  if settingNumber then
+    return settingNumber, string.format("%.2f", settingNumber)
+  end
+  return nil, "n/a"
+end
+
+local function readAxisCVarValue(axisKey)
+  local cvarValue = getCVarValue(CVAR[axisKey])
+  local cvarNumber = tonumber(cvarValue)
+  if cvarNumber then
+    return cvarNumber, string.format("%.2f", cvarNumber)
+  end
+  return nil, "n/a"
+end
+
+local function readAxisValue(axisKey)
+  local settingNumber, settingValue = readAxisSettingValue(axisKey)
+  if settingNumber then
+    return settingNumber, settingValue, "setting"
+  end
+
+  local cvarNumber, cvarValue = readAxisCVarValue(axisKey)
+  if cvarNumber then
+    return cvarNumber, cvarValue, "cvar"
+  end
+
+  return nil, "n/a", nil
+end
+
+local function getAxisBounds(axisKey)
+  return TARGET_MIN, TARGET_MAX
+end
+
+local function normalizeTarget(axisKey, value)
+  local num = clamp(value)
+  local minValue, maxValue = getAxisBounds(axisKey)
+  local wasClamped = false
+
+  if num < minValue then
+    num = minValue
+  end
+
+  if maxValue and num > maxValue then
+    num = maxValue
+    wasClamped = true
+  end
+
+  return string.format("%.2f", num), wasClamped
+end
+
 local function buildTargetValues()
-  return {
-    FP_H = string.format("%.2f", clamp(ADDON.sv.fpH)),
-    FP_V = string.format("%.2f", clamp(ADDON.sv.fpV)),
-    TP_H = string.format("%.2f", clamp(ADDON.sv.tpH)),
-    TP_V = string.format("%.2f", clamp(ADDON.sv.tpV)),
+  local rawValues = {
+    TP_H = ADDON.sv.tpH,
   }
+  local targets = {}
+  local clampedAxes = {}
+
+  for _, axisKey in ipairs(AXIS_ORDER) do
+    local target, wasClamped = normalizeTarget(axisKey, rawValues[axisKey])
+    targets[axisKey] = target
+    if wasClamped then
+      clampedAxes[#clampedAxes + 1] = axisKey
+    end
+  end
+
+  return targets, clampedAxes
 end
 
-local function readCurrentValue(cvarName)
-  return getCVarValue(cvarName) or "n/a"
+local function valuesMatch(actualValue, targetValue)
+  local actualNumber = tonumber(actualValue)
+  local targetNumber = tonumber(targetValue)
+  return actualNumber ~= nil and targetNumber ~= nil and math.abs(actualNumber - targetNumber) <= 0.009
 end
 
-function ADDON:ApplyPresets()
-  if not guardGamepad() then
+local function describeReadSource(source)
+  if source == "setting" then
+    return ADDON:Text("SOURCE_SETTING")
+  elseif source == "cvar" then
+    return ADDON:Text("SOURCE_CVAR")
+  end
+  return ADDON:Text("SOURCE_NONE")
+end
+
+local function applyAxisValue(axisKey, target, allowFallback)
+  local nativeId = ADDON.ids[axisKey]
+  local forceFallback = nativeId == nil
+  local allowFallbackEffective = allowFallback or forceFallback
+  local settingBefore = safeGet(SETTING_TYPE_GAMEPAD, ADDON.ids[axisKey])
+  local cvarBefore = getCVarValue(CVAR[axisKey])
+  local applied = safeSet(SETTING_TYPE_GAMEPAD, nativeId, target)
+  local _, actualValue = readAxisValue(axisKey)
+  local settingAfterNative = safeGet(SETTING_TYPE_GAMEPAD, nativeId)
+  local cvarAfterNative = getCVarValue(CVAR[axisKey])
+
+  dbg(
+    "ApplyAxis axis=%s id=%s target=%s allowFallback=%s forceFallback=%s allowFallbackEffective=%s setSettingOk=%s settingBefore=%s cvarBefore=%s settingAfterNative=%s cvarAfterNative=%s readback=%s",
+    tostring(axisKey),
+    tostring(nativeId),
+    tostring(target),
+    tostring(allowFallback),
+    tostring(forceFallback),
+    tostring(allowFallbackEffective),
+    tostring(applied),
+    tostring(settingBefore),
+    tostring(cvarBefore),
+    tostring(settingAfterNative),
+    tostring(cvarAfterNative),
+    tostring(actualValue)
+  )
+
+  if applied and valuesMatch(actualValue, target) then
+    return actualValue, ADDON:Text("METHOD_NATIVE")
+  end
+
+  if allowFallbackEffective and setCVarValue(CVAR[axisKey], target) then
+    local _, cvarValue = readAxisCVarValue(axisKey)
+    local settingAfterFallback = safeGet(SETTING_TYPE_GAMEPAD, nativeId)
+    local cvarAfterFallback = getCVarValue(CVAR[axisKey])
+    dbg(
+      "ApplyAxisFallback axis=%s target=%s forced=%s settingAfterFallback=%s cvarAfterFallback=%s readback=%s",
+      tostring(axisKey),
+      tostring(target),
+      tostring(forceFallback),
+      tostring(settingAfterFallback),
+      tostring(cvarAfterFallback),
+      tostring(cvarValue)
+    )
+    if valuesMatch(cvarValue, target) then
+      return cvarValue, ADDON:Text("METHOD_FALLBACK")
+    end
+    local _, fallbackValue = readAxisValue(axisKey)
+    actualValue = fallbackValue
+  end
+
+  return actualValue or "n/a", ADDON:Text("METHOD_UNCHANGED")
+end
+
+function ADDON:ApplyPresets(options)
+  options = options or {}
+
+  if (not options.bypassGamepadGuard) and (not guardGamepad()) then
     warnRed(self:Text("GAMEPAD_ONLY_WARN"))
     return
   end
 
-  local targets = buildTargetValues()
+  self:EnsureNativeSliderRange()
 
-  local ok
-  ok = safeSet(SETTING_TYPE_GAMEPAD, self.ids.FP_H, targets.FP_H)
-  if (not ok) and self.sv.useCVarsFallback then setCVarValue(CVAR.FP_H, targets.FP_H) end
+  local targets, clampedAxes = buildTargetValues()
+  local actualTpH, methodTpH = applyAxisValue("TP_H", targets.TP_H, true)
+  local _, _, sourceTpH = readAxisValue("TP_H")
 
-  ok = safeSet(SETTING_TYPE_GAMEPAD, self.ids.FP_V, targets.FP_V)
-  if (not ok) and self.sv.useCVarsFallback then setCVarValue(CVAR.FP_V, targets.FP_V) end
+  dbg(self:Text("APPLY_FMT"), targets.TP_H, tostring(actualTpH))
 
-  ok = safeSet(SETTING_TYPE_GAMEPAD, self.ids.TP_H, targets.TP_H)
-  if (not ok) and self.sv.useCVarsFallback then setCVarValue(CVAR.TP_H, targets.TP_H) end
+  if not options.suppressFeedback then
+    if #clampedAxes > 0 then
+      warnRed(string.format(self:Text("CLAMP_WARN"), table.concat(clampedAxes, ", ")))
+    end
 
-  ok = safeSet(SETTING_TYPE_GAMEPAD, self.ids.TP_V, targets.TP_V)
-  if (not ok) and self.sv.useCVarsFallback then setCVarValue(CVAR.TP_V, targets.TP_V) end
+    info(self:Text("APPLY_DONE"))
+    info(string.format(self:Text("APPLY_SUMMARY"), targets.TP_H, tostring(actualTpH)))
+    info(string.format(self:Text("APPLY_METHODS"), methodTpH))
+    info(string.format(self:Text("APPLY_SOURCE"), describeReadSource(sourceTpH)))
 
-  local r1 = safeGet(SETTING_TYPE_GAMEPAD, self.ids.FP_H) or readCurrentValue(CVAR.FP_H)
-  local r2 = safeGet(SETTING_TYPE_GAMEPAD, self.ids.FP_V) or readCurrentValue(CVAR.FP_V)
-  local r3 = safeGet(SETTING_TYPE_GAMEPAD, self.ids.TP_H) or readCurrentValue(CVAR.TP_H)
-  local r4 = safeGet(SETTING_TYPE_GAMEPAD, self.ids.TP_V) or readCurrentValue(CVAR.TP_V)
-
-  dbg(self:Text("APPLY_FMT"),
-    targets.FP_H, targets.FP_V, tostring(r1), tostring(r2),
-    targets.TP_H, targets.TP_V, tostring(r3), tostring(r4))
-
-  info(self:Text("APPLY_DONE"))
-  info(string.format(self:Text("APPLY_SUMMARY"),
-    targets.FP_H, targets.FP_V, targets.TP_H, targets.TP_V,
-    tostring(r1), tostring(r2), tostring(r3), tostring(r4)))
+    if not self.ids.TP_H then
+      if methodTpH == self:Text("METHOD_FALLBACK") and valuesMatch(actualTpH, targets.TP_H) then
+        info(self:Text("NATIVE_ID_FALLBACK_INFO"))
+      else
+        warnRed(self:Text("NATIVE_ID_MISSING"))
+      end
+    end
+  end
 end
 
 function ADDON:PrintStatus()
-  local fpH = safeGet(SETTING_TYPE_GAMEPAD, self.ids.FP_H) or readCurrentValue(CVAR.FP_H)
-  local fpV = safeGet(SETTING_TYPE_GAMEPAD, self.ids.FP_V) or readCurrentValue(CVAR.FP_V)
-  local tpH = safeGet(SETTING_TYPE_GAMEPAD, self.ids.TP_H) or readCurrentValue(CVAR.TP_H)
-  local tpV = safeGet(SETTING_TYPE_GAMEPAD, self.ids.TP_V) or readCurrentValue(CVAR.TP_V)
+  local _, tpH, sourceTpH = readAxisValue("TP_H")
+  local nativeNumber, nativeTpH = readAxisSettingValue("TP_H")
+  local cvarNumber, cvarTpH = readAxisCVarValue("TP_H")
 
-  info(string.format(self:Text("STATUS_SAVED"),
-    string.format("%.2f", clamp(self.sv.fpH)),
-    string.format("%.2f", clamp(self.sv.fpV)),
-    string.format("%.2f", clamp(self.sv.tpH)),
-    string.format("%.2f", clamp(self.sv.tpV))))
-  info(string.format(self:Text("STATUS_REAL"), tostring(fpH), tostring(fpV), tostring(tpH), tostring(tpV)))
+  info(string.format(self:Text("STATUS_SAVED"), string.format("%.2f", clamp(self.sv.tpH))))
+  info(string.format(self:Text("STATUS_REAL"), tostring(tpH)))
+  info(string.format(self:Text("STATUS_NATIVE"), tostring(nativeTpH)))
+  info(string.format(self:Text("STATUS_CVAR"), tostring(cvarTpH)))
+  info(string.format(self:Text("STATUS_SOURCE"), describeReadSource(sourceTpH)))
+
+  if nativeNumber ~= nil and cvarNumber ~= nil and math.abs(nativeNumber - cvarNumber) > 0.009 then
+    warnRed(self:Text("STATUS_DIVERGED"))
+  end
 end
 
 local function describeValue(value)
@@ -373,110 +658,56 @@ local function describeValue(value)
   return tostring(value)
 end
 
-local function containsCameraHint(text)
-  if type(text) ~= "string" then return false end
-  local lower = zo_strlower(text)
-  return lower:find("sensitivity", 1, true)
-      or lower:find("look speed", 1, true)
-      or lower:find("horizontal", 1, true)
-      or lower:find("vertical", 1, true)
-      or lower:find("first", 1, true)
-      or lower:find("third", 1, true)
-      or lower:find("primera", 1, true)
-      or lower:find("tercera", 1, true)
-end
-
-local function dumpControlGroup(label, settingType)
+local function dumpControlGroup(batch, label, settingType)
   local data = ZO_OptionsPanel_Camera_ControlData
   if not (data and data[settingType]) then
-    dbg("[%s] no data for settingType=%s", label, tostring(settingType))
+    ADDON:DebugBatchAdd(batch, string.format("[%s] no data for settingType=%s", label, tostring(settingType)))
     return
   end
 
-  dbg("==== %s settingType=%s ====", label, tostring(settingType))
+  ADDON:DebugBatchAdd(batch, string.format("==== %s settingType=%s ====", label, tostring(settingType)))
   for id, entry in pairs(data[settingType]) do
     if type(entry) == "table" then
-      dbg(
-        "id=%s controlType=%s system=%s settingId=%s panel=%s text=%s name=%s gamepadTextOverride=%s tooltip=%s min=%s max=%s format=%s",
-        tostring(id),
-        tostring(entry.controlType),
-        tostring(entry.system),
-        tostring(entry.settingId),
-        tostring(entry.panel),
-        describeValue(entry.text),
-        describeValue(entry.name),
-        describeValue(entry.gamepadTextOverride),
-        describeValue(entry.tooltipText),
-        tostring(entry.minValue),
-        tostring(entry.maxValue),
-        tostring(entry.valueFormat)
+      ADDON:DebugBatchAdd(
+        batch,
+        string.format(
+          "id=%s controlType=%s system=%s settingId=%s panel=%s text=%s name=%s gamepadTextOverride=%s tooltip=%s min=%s max=%s format=%s",
+          tostring(id),
+          tostring(entry.controlType),
+          tostring(entry.system),
+          tostring(entry.settingId),
+          tostring(entry.panel),
+          describeValue(entry.text),
+          describeValue(entry.name),
+          describeValue(entry.gamepadTextOverride),
+          describeValue(entry.tooltipText),
+          tostring(entry.minValue),
+          tostring(entry.maxValue),
+          tostring(entry.valueFormat)
+        )
       )
     else
-      dbg("id=%s entry=%s", tostring(id), tostring(entry))
+      ADDON:DebugBatchAdd(batch, string.format("id=%s entry=%s", tostring(id), tostring(entry)))
     end
   end
 end
 
 function ADDON:DumpCameraDiagnostics()
-  if not (self.sv and self.sv.verbose and self.logger) then
+  if not (self:IsDebugModeEnabled() and self:EnsureDebugLogger()) then
     warnRed(self:Text("DUMP_NEEDS_DEBUG"))
     return
   end
 
-  dbg("==== EZOcamsens camera diagnostic dump start ====")
-  dbg("Detected keys FP_H=%s FP_V=%s TP_H=%s TP_V=%s",
-    tostring(self.ids.FP_H), tostring(self.ids.FP_V), tostring(self.ids.TP_H), tostring(self.ids.TP_V))
-  dbg("Current readback FP_H=%s FP_V=%s TP_H=%s TP_V=%s",
-    tostring(readCurrentValue(self.ids.FP_H)), tostring(readCurrentValue(self.ids.FP_V)),
-    tostring(readCurrentValue(self.ids.TP_H)), tostring(readCurrentValue(self.ids.TP_V)))
-  dumpControlGroup("CAMERA", SETTING_TYPE_CAMERA)
+  local batch = self:CreateDebugBatch("DumpCameraDiagnostics")
+  self:DebugBatchAdd(batch, "==== EZOcamsens camera diagnostic dump start ====")
+  self:DebugBatchAdd(batch, string.format("Detected key TP_H=%s", tostring(self.ids.TP_H)))
+  local _, tpH = readAxisValue("TP_H")
+  self:DebugBatchAdd(batch, string.format("Current readback TP_H=%s", tostring(tpH)))
+  dumpControlGroup(batch, "CAMERA", SETTING_TYPE_CAMERA)
   if SETTING_TYPE_GAMEPAD then
-    dumpControlGroup("GAMEPAD", SETTING_TYPE_GAMEPAD)
+    dumpControlGroup(batch, "GAMEPAD", SETTING_TYPE_GAMEPAD)
   end
-  dbg("==== EZOcamsens camera diagnostic dump end ====")
+  self:DebugBatchAdd(batch, "==== EZOcamsens camera diagnostic dump end ====")
+  self:DebugBatchFlush(batch)
   info(self:Text("DUMP_DONE"))
-end
-
-function ADDON:ProbeCameraControls()
-  local data = ZO_OptionsPanel_Camera_ControlData
-  if not data then
-    warnRed(self:Text("BUILD_NO_SLIDERS"))
-    return
-  end
-
-  local function emitGroup(label, settingType)
-    if not data[settingType] then
-      info(string.format("[Probe] %s: no data", label))
-      return
-    end
-
-    info(string.format("[Probe] %s", label))
-    for id, entry in pairs(data[settingType]) do
-      if type(entry) == "table" then
-        local text = describeValue(entry.text)
-        local name = describeValue(entry.name)
-        local override = describeValue(entry.gamepadTextOverride)
-        local tooltip = describeValue(entry.tooltipText)
-        if containsCameraHint(text) or containsCameraHint(name) or containsCameraHint(override) or containsCameraHint(tooltip) then
-          info(string.format(
-            "id=%s sys=%s settingId=%s type=%s text=%s name=%s override=%s tooltip=%s",
-            tostring(id),
-            tostring(entry.system),
-            tostring(entry.settingId),
-            tostring(entry.controlType),
-            text,
-            name,
-            override,
-            tooltip
-          ))
-        end
-      end
-    end
-  end
-
-  emitGroup("CAMERA", SETTING_TYPE_CAMERA)
-  if SETTING_TYPE_GAMEPAD then
-    emitGroup("GAMEPAD", SETTING_TYPE_GAMEPAD)
-  end
-  info(self:Text("PROBE_DONE"))
 end

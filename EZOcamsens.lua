@@ -2,24 +2,42 @@ local ADDON = {}
 EZOcamsens = ADDON
 
 ADDON.name    = "EZOcamsens"
-ADDON.version = "1.6.2"
+ADDON.version = "1.7.0"
 
 -- Ajustes por defecto. Mantengo todo junto para que sea facil revisar cambios
 -- de balance sin tener que perseguir valores por varios archivos.
 local defaults = {
   applyOnlyInGamepad = true,
-  verbose = false,
-  capMultiplier = 2.0,
-  autoApplyCapsOnLoad = false,
-  fpH = 1.20,
-  fpV = 1.20,
+  debugMode = false,
   tpH = 1.60,
-  tpV = 1.60,
   chatEnabled  = true,
-  useCVarsFallback = true,
   language = "auto", -- "auto" | "es" | "en"
 }
 ADDON.defaults = defaults
+
+-- Valores base del juego tomados de un perfil PTS limpio. Solo se incluyen
+-- ajustes que este addon toca o puede tocar en el futuro cercano.
+local gameDefaults = {
+  sensitivity = {
+    TP_H = 0.85,
+  },
+}
+ADDON.gameDefaults = gameDefaults
+
+local MANAGED_SV_KEYS = {
+  TP_H = "tpH",
+}
+
+local function applyManagedGameDefaultsToSavedVars(sv)
+  if type(sv) ~= "table" then return end
+
+  for axisKey, svKey in pairs(MANAGED_SV_KEYS) do
+    local value = tonumber(gameDefaults.sensitivity[axisKey])
+    if value then
+      sv[svKey] = value
+    end
+  end
+end
 
 local function copyDefaults(dst, src)
   for k, v in pairs(src) do
@@ -35,27 +53,48 @@ end
 function ADDON:ResetToDefaults()
   if not self.sv then return end
   copyDefaults(self.sv, defaults)
+  applyManagedGameDefaultsToSavedVars(self.sv)
   if self.chat then self.chat:SetEnabled(self.sv.chatEnabled) end
   if self.InitLocale then self:InitLocale() end
-  if self.ApplyCaps then self:ApplyCaps() end
-  if self.chat and self.sv.chatEnabled then self.chat:Print("|cAFC7E8[EZOcamsens]|r " .. self:Text("DEFAULTS_RESTORED")) end
+  if self.ApplyPresets then
+    self:ApplyPresets({ bypassGamepadGuard = true, suppressFeedback = true })
+  end
+  if self.chat and self.sv.chatEnabled then self.chat:Print(self:Text("DEFAULTS_RESTORED")) end
+  self:RefreshLAM()
+end
+
+function ADDON:IsDebugModeEnabled()
+  return self.sv and self.sv.debugMode == true
+end
+
+function ADDON:SetDebugModeEnabled(enabled)
+  if not self.sv then return end
+  self.sv.debugMode = enabled == true
+  if self.RefreshDebugLoggerState then
+    self:RefreshDebugLoggerState()
+  end
   self:RefreshLAM()
 end
 
 function ADDON:MigrateSavedVariables()
   if not self.sv then return end
 
-  if self.sv.fpH == nil then
-    local fp = tonumber(self.sv.fp) or defaults.fpH
-    self.sv.fpH = fp
-    self.sv.fpV = fp
+  if self.sv.debugMode == nil then
+    self.sv.debugMode = self.sv.verbose == true
   end
+  self.sv.verbose = nil
 
   if self.sv.tpH == nil then
     local tp = tonumber(self.sv.tp) or defaults.tpH
     self.sv.tpH = tp
-    self.sv.tpV = tp
   end
+  self.sv.tp = nil
+  self.sv.capMultiplier = nil
+  self.sv.autoApplyCapsOnLoad = nil
+  self.sv.useCVarsFallback = nil
+  self.sv.diagThreshold = nil
+  self.sv.diagAutoStopMs = nil
+  self.sv.originalSensitivity = nil
 end
 
 function ADDON:OnLoaded(event, addonName)
@@ -66,27 +105,34 @@ function ADDON:OnLoaded(event, addonName)
   self:MigrateSavedVariables()
 
   self:InitLogger()
+  if self.RefreshDebugLoggerState then self:RefreshDebugLoggerState() end
   self:InitChat()
   self:InitLocale()
   self:DiscoverCameraSliders()
-  if self.MaybeApplyCapsOnLoad then self:MaybeApplyCapsOnLoad() end
   self:SetupMenu()
 
   SLASH_COMMANDS["/ezocamsens"] = function(txt)
-    txt = (txt or ""):lower()
-    if txt == "status" or txt == "estado" then
+    txt = zo_strtrim(txt or "")
+    local lower = zo_strlower(txt)
+    local a1, a2 = zo_strsplit(" ", lower)
+
+    if lower == "status" or lower == "estado" then
       EZOcamsens:PrintStatus()
-    elseif txt == "apply" or txt == "aplicar" then
+    elseif lower == "apply" or lower == "aplicar" then
       EZOcamsens:ApplyPresets()
-    elseif txt == "dump" or txt == "diag" or txt == "debug" then
-      EZOcamsens:DumpCameraDiagnostics()
-    elseif txt == "probe" or txt == "sonda" then
-      EZOcamsens:ProbeCameraControls()
+    elseif a1 == "debug" or lower == "dump" or lower == "diag" or lower == "probe" or lower == "sonda" then
+      if a1 == "debug" then
+        EZOcamsens:ExecuteDebugCommand(a2)
+      elseif lower == "dump" or lower == "diag" then
+        EZOcamsens:ExecuteDebugCommand("dump")
+      elseif lower == "probe" or lower == "sonda" then
+        EZOcamsens:ExecuteDebugCommand("probe")
+      end
     else
       if EZOcamsens.chat and EZOcamsens.sv and EZOcamsens.sv.chatEnabled then
-        EZOcamsens.chat:Print("|cAFC7E8[EZOcamsens]|r " .. EZOcamsens:Text("CMD_HELP"))
+        EZOcamsens.chat:Print(EZOcamsens:Text("CMD_HELP"))
+        end
       end
-    end
   end
 end
 

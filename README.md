@@ -8,21 +8,21 @@ Addon independiente para The Elder Scrolls Online.
 - Carpeta de addons de ESO: `C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns`
 - Enlace esperado: `C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns\EZOcamsens -> Z:\Dev\EZOcamsens`
 
-## Variables relevantes detectadas
+## Alcance actual
 
-Tras analizar `UserSettings.txt`, las variables importantes para este addon son las
-cuatro CVars de sensibilidad de mando por eje y perspectiva:
+El addon solo gestiona una variable de juego:
 
-- `GamepadSensitivityFirstPersonX`
-- `GamepadSensitivityFirstPersonY`
 - `GamepadSensitivityThirdPersonX`
-- `GamepadSensitivityThirdPersonY`
 
-Estas son las que usa el addon para ajustar sensibilidad horizontal/vertical en
-primera y tercera persona. Las entradas `MouseSensitivity*` no forman parte del
-objetivo del addon, y `GamepadSensitivityFirstPerson.2` / `GamepadSensitivityThirdPerson.2`
-quedan fuera hasta que se verifique en el propio juego que afectan al comportamiento
-que queremos controlar.
+Todo el codigo, menu y restauracion por defecto se han simplificado para dejar
+estable el ajuste de sensibilidad horizontal de tercera persona antes de crecer
+hacia otros ejes o perspectivas.
+
+## Valor base del juego
+
+Valor base tomado del perfil PTS limpio usado como referencia:
+
+- `GamepadSensitivityThirdPersonX = 0.85`
 
 ## Conclusión tras comparar con el addon original
 
@@ -30,31 +30,15 @@ Al comparar este proyecto con el ZIP original de ChatGPT, la diferencia importan
 no estaba en qué variables existen en `UserSettings.txt`, sino en cómo se aplicaban
 los cambios dentro de ESO.
 
-Estrategia del addon original:
-
-- Detectar primero los sliders reales del panel de opciones de mando en
-  `ZO_OptionsPanel_Camera_ControlData[SETTING_TYPE_GAMEPAD]`.
-- Aplicar los cambios por `SetSetting(SETTING_TYPE_GAMEPAD, id, value)`.
-- Usar `SetCVar(...)` solo como metodo alternativo si el ajuste nativo fallaba.
-- Si no se estaba en modo gamepad y estaba activa la opcion correspondiente,
-  bloquear la aplicacion en lugar de forzar valores.
-
-Estrategia introducida despues:
-
-- Usar directamente las CVars `GamepadSensitivityFirstPersonX/Y` y
-  `GamepadSensitivityThirdPersonX/Y` como via principal.
-- Dejar de depender de `SetSetting/GetSetting` y de la deteccion dinamica de sliders.
-- Añadir una capa de "modo seguro" que fuerza valores por defecto fuera de ciertas
-  condiciones.
-
 Decision de proyecto:
 
-- La aplicacion principal de sensibilidad debe seguir la estrategia del addon
-  original.
-- Las CVars deducidas desde `UserSettings.txt` son utiles como referencia y como
-  fallback, pero no deben sustituir por defecto la via nativa del juego.
-- Antes de añadir capas de seguridad o automatismos, hay que preservar primero
-  el camino de aplicacion que ya habia demostrado funcionar mejor en juego.
+- Detectar primero el control nativo de tercera persona horizontal en
+  `ZO_OptionsPanel_Camera_ControlData[SETTING_TYPE_GAMEPAD]`.
+- Aplicar por `SetSetting(...)` cuando ese control exista.
+- Mantener `SetCVar("GamepadSensitivityThirdPersonX", ...)` como fallback.
+- Restaurar valores por defecto al valor base real del juego (`0.85`), no a un
+  snapshot del usuario.
+- Mantener el panel del addon pequeño y centrado en `third-person horizontal`.
 
 Para recrear el entorno local:
 
