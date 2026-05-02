@@ -2,7 +2,7 @@ local ADDON = {}
 EZOcamsens = ADDON
 
 ADDON.name    = "EZOcamsens"
-ADDON.version = "1.7.0"
+ADDON.version = "1.7.1"
 
 -- Ajustes por defecto. Mantengo todo junto para que sea facil revisar cambios
 -- de balance sin tener que perseguir valores por varios archivos.
