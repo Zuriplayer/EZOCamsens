@@ -15,6 +15,23 @@ local defaults = {
 }
 ADDON.defaults = defaults
 
+local function RegisterWithEZOBindings()
+  if not (EZOBindings and type(EZOBindings.RegisterAddon) == "function") then
+    return
+  end
+
+  EZOBindings:RegisterAddon(ADDON.name, {
+    version = 1,
+    actions = {
+      {
+        name = "EZO_APPLY_PRESETS",
+        priority = 40,
+        mode = "global",
+      },
+    },
+  })
+end
+
 -- Valores base del juego tomados de un perfil PTS limpio. Solo se incluyen
 -- ajustes que este addon toca o puede tocar en el futuro cercano.
 local gameDefaults = {
@@ -110,6 +127,7 @@ function ADDON:OnLoaded(event, addonName)
   self:InitLocale()
   self:DiscoverCameraSliders()
   self:SetupMenu()
+  RegisterWithEZOBindings()
 
   SLASH_COMMANDS["/ezocamsens"] = function(txt)
     txt = zo_strtrim(txt or "")
