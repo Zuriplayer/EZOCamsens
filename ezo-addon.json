@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "addon": {
+    "id": "ezocamsens",
+    "name": "EZOcamsens",
+    "version": "1.7.1",
+    "status": "beta",
+    "phase": "closed-testing",
+    "visibility": "public",
+    "manifest": "EZOcamsens.txt",
+    "package": {
+      "rootFolderName": "EZOcamsens",
+      "zipName": "EZOcamsens_v1.7.1.zip",
+      "outputPath": "dist",
+      "include": [
+        "*.txt",
+        "*.lua",
+        "*.xml",
+        "modules/**",
+        "lang/**",
+        "libs/**",
+        "media/**",
+        "textures/**",
+        "fonts/**",
+        "bindings/**"
+      ],
+      "exclude": [
+        ".codex/**",
+        ".github/**",
+        ".git/**",
+        ".vscode/**",
+        "dev/**",
+        "docs/**",
+        "scripts/**",
+        "tests/**",
+        "test/**",
+        "node_modules/**",
+        "build/**",
+        "dist/**",
+        "*.md",
+        "*.ps1",
+        "*.sh",
+        "*.log",
+        "*.tmp",
+        "*.bak"
+      ]
+    }
+  },
+  "discord": {
+    "webhookSecretNames": {
+      "downloads": "EZO_CODEX_DOWNLOADS",
+      "releases": "EZO_CODEX_RELEASES",
+      "status": "EZO_CODEX_STATUS",
+      "announcements": "EZO_CODEX_ANNOUNCER",
+      "betaBuilds": "EZO_CODEX_BETA_BUILDS",
+      "codexLog": "CODEX_LOG",
+      "bugReports": "EZO_CODEX_BUG_REPORTS"
+    }
+  }
+}

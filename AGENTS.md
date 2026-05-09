@@ -33,3 +33,10 @@ Este proyecto es un addon independiente para The Elder Scrolls Online.
 - El addon carga sin errores Lua.
 - `ReloadUI()` no rompe el estado.
 - El manifest `EZOcamsens.txt` referencia todos los archivos necesarios.
+## Publicacion en Discord
+
+- La publicacion en Discord es un paso separado de commit/push.
+- No lanzar workflows de Discord automaticamente tras cada cambio.
+- Proponer publicacion solo para cambios funcionales reales, correcciones importantes o versiones suficientemente estables para jugadores.
+- Antes de lanzar un workflow de Discord, pedir confirmacion explicita indicando la opcion: `status`, `beta`, `release + download` o `no publicar`.
+- Para detalles operativos, usar `docs/ezo-discord-automation.md`.
