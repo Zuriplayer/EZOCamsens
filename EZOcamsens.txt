@@ -1,7 +1,7 @@
 ## Title: E|cB040FFZ|rOcamsens
 ## Author: @Zuriplayer
-## Version: 1.7.1
-## AddOnVersion: 10701
+## Version: 1.7.2
+## AddOnVersion: 10702
 ## APIVersion: 101049 101050
 ## Description: Focused tuning for controller third-person horizontal camera sensitivity.
 ## DependsOn: LibAddonMenu-2.0 LibChatMessage

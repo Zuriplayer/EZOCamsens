@@ -16,14 +16,6 @@ local function info(msg)
   end
 end
 
-local function safeChat(msg)
-  if EZOcamsens and EZOcamsens.chat then
-    EZOcamsens.chat:Print(tostring(msg))
-  else
-    d("|cAFC7E8[EZOcamsens]|r " .. tostring(msg))
-  end
-end
-
 local function warnRed(msg)
   if EZOcamsens and EZOcamsens.chat then
     EZOcamsens.chat:Print("|cD89B3C" .. tostring(msg) .. "|r")
@@ -121,7 +113,6 @@ function ADDON:SafeDebugViewer(msg, subTag)
 end
 
 function ADDON:DebugPrint(msg, subTag)
-  safeChat(msg)
   if isDebugEnabled() then
     self:SafeDebugViewer(msg, subTag or "Debug")
   end
@@ -141,7 +132,6 @@ function ADDON:DebugBatchAdd(batch, msg)
   end
 
   msg = tostring(msg)
-  safeChat(msg)
   batch.lines[#batch.lines + 1] = msg
 end
 
@@ -162,7 +152,17 @@ local STR = {
     TP_HEADER = "Tercera persona",
     TP_H = "Sensibilidad horizontal",
     APPLY_NOW = "Aplicar ajuste",
-    APPLY_HINT = "Mueve el valor y pulsa Aplicar ajuste. El addon intenta usar primero el control nativo del juego y recurre a la CVar solo si hace falta.",
+    APPLY_HINT = "Mueve el valor para aplicarlo. El boton Aplicar ajuste fuerza de nuevo el valor guardado. El addon intenta usar primero el control nativo del juego y recurre a la CVar solo si hace falta.",
+    DYNAMIC_HEADER = "Giro dinamico experimental",
+    DYNAMIC_ENABLED = "Activar giro dinamico",
+    DYNAMIC_ENABLED_TT = "Aplica una sensibilidad rapida al empezar el giro y cambia a sensibilidad lenta tras superar el angulo configurado.",
+    DYNAMIC_ONLY_COMBAT = "Aplicar solo en combate",
+    DYNAMIC_ONLY_COMBAT_TT = "Si esta activo, el giro dinamico espera a que entres en combate y restaura el ajuste normal al salir.",
+    DYNAMIC_FAST = "Sensibilidad rapida",
+    DYNAMIC_SLOW = "Sensibilidad lenta",
+    DYNAMIC_ANGLE = "Angulo para cambiar a lento",
+    DYNAMIC_IDLE = "Reposo para reiniciar (ms)",
+    DYNAMIC_MOVEMENT = "Movimiento minimo por muestra",
     BEHAVIOR = "Comportamiento",
     ONLY_GP = "Aplicar sólo en modo gamepad",
     ONLY_GP_TT = "Evita cambios si no estás jugando con mando.",
@@ -178,11 +178,15 @@ local STR = {
     LANG_AUTO = "Automático (cliente)",
     LANG_ES = "Español",
     LANG_EN = "English",
-    CMD_HELP = "uso: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump]",
+    CMD_HELP = "uso: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump||heading||turnstart||turnstop||turnreport]",
     LANG_NOTICE = "Para aplicar el cambio de idioma se recargará la interfaz.",
     DEBUG_MODE_DISABLED = "El modo debug está desactivado. Actívalo en la configuración del addon para usar /ezocamsens debug.",
     DEBUG_TITLE = "Comandos de diagnóstico:",
     DEBUG_CMD_DUMP = "  /ezocamsens debug dump        - volcado técnico de cámara a DebugLogViewer",
+    DEBUG_CMD_HEADING = "  /ezocamsens debug heading     - muestra el heading horizontal actual de la cámara",
+    DEBUG_CMD_TURNSTART = "  /ezocamsens debug turnstart   - inicia la medición de giro horizontal",
+    DEBUG_CMD_TURNSTOP = "  /ezocamsens debug turnstop    - detiene la medición y muestra el resumen",
+    DEBUG_CMD_TURNREPORT = "  /ezocamsens debug turnreport  - muestra el último resumen de giro",
     EXTERNAL_DIFF = "Se detectaron valores de sensibilidad distintos a los guardados. Otro addon o el usuario pudo haberlos cambiado.",
     DEFAULTS_RESTORED = "Sensibilidad horizontal de tercera persona restaurada al valor por defecto del juego.",
     APPLY_DONE = "Ajuste aplicado.",
@@ -209,8 +213,25 @@ local STR = {
     BUILD_NO_SLIDERS = "No pude acceder a los controles nativos de sensibilidad en esta version del juego.",
     IDS_FMT = "Clave detectada: 3ª(H)=%s",
     DUMP_BUTTON = "Volcar diagnostico de camara",
-    DUMP_DONE = "Diagnostico de camara enviado a DebugLogViewer mediante LibDebugLogger.",
     DUMP_NEEDS_DEBUG = "Activa primero el modo debug para generar el diagnostico.",
+    HEADING_UNAVAILABLE = "No se pudo leer el heading actual de la cámara en esta sesión.",
+    HEADING_NOW = "Heading horizontal actual=%.2f grados",
+    TURN_START = "Medición de giro iniciada en %.2f grados.",
+    TURN_RUNNING = "Ya hay una medición de giro en marcha.",
+    TURN_IDLE = "No hay una medición de giro activa.",
+    TURN_NO_DATA = "Todavía no hay una medición de giro disponible.",
+    TURN_STOP = "Medición de giro detenida.",
+    TURN_REPORT = "Giro horizontal: inicio=%.2f actual=%.2f directo=%.2f acumulado=%.2f abs=%.2f tiempo=%.3fs velocidadMedia=%.2f grados/s muestras=%d",
+    DYNAMIC_STARTED = "Giro dinamico iniciado: rapido=%.2f lento=%.2f angulo=%.2f",
+    DYNAMIC_STOPPED = "Giro dinamico detenido.",
+    DYNAMIC_FAST_APPLIED = "Giro dinamico: sensibilidad rapida aplicada %.2f (%s)",
+    DYNAMIC_SLOW_APPLIED = "Giro dinamico: sensibilidad lenta aplicada %.2f tras %.2f grados (%s)",
+    DYNAMIC_RESET = "Giro dinamico: reposo detectado, reinicio a rapido.",
+    DYNAMIC_READBACK = "Lectura dinamica: actual=%s metodo=%s",
+    DYNAMIC_REASON_START = "inicio",
+    DYNAMIC_REASON_COMBAT = "combate",
+    DYNAMIC_REASON_IDLE = "reposo",
+    DYNAMIC_REASON_ANGLE = "angulo",
   },
   en = {
     DESC = "Controls third-person horizontal camera sensitivity for controller play.",
@@ -219,7 +240,17 @@ local STR = {
     TP_HEADER = "Third-person",
     TP_H = "Horizontal sensitivity",
     APPLY_NOW = "Apply setting",
-    APPLY_HINT = "Move the value and press Apply setting. The addon first tries the native in-game control and only falls back to the CVar if needed.",
+    APPLY_HINT = "Move the value to apply it. The Apply setting button forces the saved value again. The addon first tries the native in-game control and only falls back to the CVar if needed.",
+    DYNAMIC_HEADER = "Experimental dynamic turn",
+    DYNAMIC_ENABLED = "Enable dynamic turn",
+    DYNAMIC_ENABLED_TT = "Applies fast sensitivity when turning starts and switches to slow sensitivity after the configured angle.",
+    DYNAMIC_ONLY_COMBAT = "Apply only in combat",
+    DYNAMIC_ONLY_COMBAT_TT = "When enabled, dynamic turn waits until combat starts and restores the normal setting after combat ends.",
+    DYNAMIC_FAST = "Fast sensitivity",
+    DYNAMIC_SLOW = "Slow sensitivity",
+    DYNAMIC_ANGLE = "Angle before slow mode",
+    DYNAMIC_IDLE = "Idle reset (ms)",
+    DYNAMIC_MOVEMENT = "Minimum movement per sample",
     BEHAVIOR = "Behavior",
     ONLY_GP = "Apply only in gamepad mode",
     ONLY_GP_TT = "Prevents changes if you are not playing with a controller.",
@@ -235,11 +266,15 @@ local STR = {
     LANG_AUTO = "Automatic (client)",
     LANG_ES = "Spanish",
     LANG_EN = "English",
-    CMD_HELP = "usage: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump]",
+    CMD_HELP = "usage: /ezocamsens status || /ezocamsens apply || /ezocamsens debug [dump||heading||turnstart||turnstop||turnreport]",
     LANG_NOTICE = "The UI will reload to apply the language change.",
     DEBUG_MODE_DISABLED = "Debug mode is disabled. Enable it in the addon settings to use /ezocamsens debug.",
     DEBUG_TITLE = "Diagnostic commands:",
     DEBUG_CMD_DUMP = "  /ezocamsens debug dump        - camera technical dump to DebugLogViewer",
+    DEBUG_CMD_HEADING = "  /ezocamsens debug heading     - show the current horizontal camera heading",
+    DEBUG_CMD_TURNSTART = "  /ezocamsens debug turnstart   - start horizontal turn measurement",
+    DEBUG_CMD_TURNSTOP = "  /ezocamsens debug turnstop    - stop measurement and show the summary",
+    DEBUG_CMD_TURNREPORT = "  /ezocamsens debug turnreport  - show the latest turn summary",
     EXTERNAL_DIFF = "Sensitivity values differ from saved presets. Another addon or the user may have changed them.",
     DEFAULTS_RESTORED = "Third-person horizontal sensitivity restored to the game's default value.",
     APPLY_DONE = "Setting applied.",
@@ -266,8 +301,25 @@ local STR = {
     BUILD_NO_SLIDERS = "Native sensitivity controls are not available in this game build.",
     IDS_FMT = "Detected key: 3rd(H)=%s",
     DUMP_BUTTON = "Dump camera diagnostics",
-    DUMP_DONE = "Camera diagnostics sent to DebugLogViewer via LibDebugLogger.",
     DUMP_NEEDS_DEBUG = "Enable debug mode first to generate diagnostics.",
+    HEADING_UNAVAILABLE = "Could not read the current camera heading in this session.",
+    HEADING_NOW = "Current horizontal heading=%.2f degrees",
+    TURN_START = "Turn measurement started at %.2f degrees.",
+    TURN_RUNNING = "A turn measurement is already running.",
+    TURN_IDLE = "There is no active turn measurement.",
+    TURN_NO_DATA = "There is no turn measurement data yet.",
+    TURN_STOP = "Turn measurement stopped.",
+    TURN_REPORT = "Horizontal turn: start=%.2f current=%.2f direct=%.2f accumulated=%.2f abs=%.2f time=%.3fs avgSpeed=%.2f deg/s samples=%d",
+    DYNAMIC_STARTED = "Dynamic turn started: fast=%.2f slow=%.2f angle=%.2f",
+    DYNAMIC_STOPPED = "Dynamic turn stopped.",
+    DYNAMIC_FAST_APPLIED = "Dynamic turn: fast sensitivity applied %.2f (%s)",
+    DYNAMIC_SLOW_APPLIED = "Dynamic turn: slow sensitivity applied %.2f after %.2f degrees (%s)",
+    DYNAMIC_RESET = "Dynamic turn: idle detected, reset to fast.",
+    DYNAMIC_READBACK = "Dynamic readback: actual=%s method=%s",
+    DYNAMIC_REASON_START = "start",
+    DYNAMIC_REASON_COMBAT = "combat",
+    DYNAMIC_REASON_IDLE = "idle",
+    DYNAMIC_REASON_ANGLE = "angle",
   }
 }
 
@@ -298,8 +350,14 @@ function ADDON:RefreshLAM()
 end
 
 function ADDON:ShowDebugCommandHelp()
-  safeChat(self:Text("DEBUG_TITLE"))
-  safeChat(self:Text("DEBUG_CMD_DUMP"))
+  local batch = self:CreateDebugBatch("DebugHelp")
+  self:DebugBatchAdd(batch, self:Text("DEBUG_TITLE"))
+  self:DebugBatchAdd(batch, self:Text("DEBUG_CMD_DUMP"))
+  self:DebugBatchAdd(batch, self:Text("DEBUG_CMD_HEADING"))
+  self:DebugBatchAdd(batch, self:Text("DEBUG_CMD_TURNSTART"))
+  self:DebugBatchAdd(batch, self:Text("DEBUG_CMD_TURNSTOP"))
+  self:DebugBatchAdd(batch, self:Text("DEBUG_CMD_TURNREPORT"))
+  self:DebugBatchFlush(batch)
 end
 
 function ADDON:ExecuteDebugCommand(sub)
@@ -316,6 +374,22 @@ function ADDON:ExecuteDebugCommand(sub)
 
   if sub == "dump" or sub == "diag" then
     self:DumpCameraDiagnostics()
+    return true
+  end
+  if sub == "heading" then
+    self:PrintCurrentCameraHeading()
+    return true
+  end
+  if sub == "turnstart" then
+    self:StartTurnMeasurement()
+    return true
+  end
+  if sub == "turnstop" then
+    self:StopTurnMeasurement()
+    return true
+  end
+  if sub == "turnreport" then
+    self:PrintTurnMeasurementReport()
     return true
   end
   self:ShowDebugCommandHelp()
@@ -595,7 +669,9 @@ function ADDON:ApplyPresets(options)
   options = options or {}
 
   if (not options.bypassGamepadGuard) and (not guardGamepad()) then
-    warnRed(self:Text("GAMEPAD_ONLY_WARN"))
+    if not options.suppressFeedback then
+      warnRed(self:Text("GAMEPAD_ONLY_WARN"))
+    end
     return
   end
 
@@ -627,6 +703,19 @@ function ADDON:ApplyPresets(options)
   end
 end
 
+function ADDON:ApplyTpHValue(value, options)
+  options = options or {}
+  if (not options.bypassGamepadGuard) and (not guardGamepad()) then
+    return nil, self:Text("METHOD_UNCHANGED"), nil
+  end
+
+  self:EnsureNativeSliderRange()
+  local target = normalizeTarget("TP_H", value)
+  local actualTpH, methodTpH = applyAxisValue("TP_H", target, true)
+  local _, _, sourceTpH = readAxisValue("TP_H")
+  return actualTpH, methodTpH, sourceTpH
+end
+
 function ADDON:PrintStatus()
   local _, tpH, sourceTpH = readAxisValue("TP_H")
   local nativeNumber, nativeTpH = readAxisSettingValue("TP_H")
@@ -656,6 +745,411 @@ local function describeValue(value)
     return "nil"
   end
   return tostring(value)
+end
+
+local function getNowMs()
+  local ok, value = pcall(GetGameTimeMilliseconds)
+  if ok and type(value) == "number" then
+    return value
+  end
+  return nil
+end
+
+local function normalizeHeadingDegrees(angle)
+  angle = tonumber(angle) or 0
+  angle = angle % 360
+  if angle < 0 then
+    angle = angle + 360
+  end
+  return angle
+end
+
+local function normalizeHeadingDeltaDegrees(delta)
+  delta = tonumber(delta) or 0
+  while delta > 180 do
+    delta = delta - 360
+  end
+  while delta < -180 do
+    delta = delta + 360
+  end
+  return delta
+end
+
+function ADDON:GetCurrentCameraHeadingDegrees()
+  local ok, headingRadians = pcall(GetPlayerCameraHeading)
+  if not ok or type(headingRadians) ~= "number" then
+    return nil
+  end
+
+  return normalizeHeadingDegrees(math.deg(headingRadians))
+end
+
+function ADDON:PrintCurrentCameraHeading()
+  if not self:IsDebugModeEnabled() then
+    warnRed(self:Text("DUMP_NEEDS_DEBUG"))
+    return
+  end
+
+  local heading = self:GetCurrentCameraHeadingDegrees()
+  if heading == nil then
+    warnRed(self:Text("HEADING_UNAVAILABLE"))
+    return
+  end
+
+  self:DebugPrint(string.format(self:Text("HEADING_NOW"), heading), "CameraHeading")
+end
+
+local TURN_MEASUREMENT_UPDATE_MS = 16
+local TURN_MEASUREMENT_UPDATE_KEY = "EZOcamsens_TurnMeasurement"
+
+function ADDON:PollTurnMeasurement()
+  local probe = self.turnMeasurement
+  if not (probe and probe.active) then
+    return
+  end
+
+  local heading = self:GetCurrentCameraHeadingDegrees()
+  local nowMs = getNowMs()
+  if heading == nil or nowMs == nil then
+    return
+  end
+
+  local stepDelta = normalizeHeadingDeltaDegrees(heading - probe.lastHeadingDeg)
+  probe.lastHeadingDeg = heading
+  probe.lastSampleAtMs = nowMs
+  probe.samples = probe.samples + 1
+  probe.totalSignedDeltaDeg = probe.totalSignedDeltaDeg + stepDelta
+  probe.totalAbsDeltaDeg = probe.totalAbsDeltaDeg + math.abs(stepDelta)
+end
+
+function ADDON:StartTurnMeasurement()
+  if not self:IsDebugModeEnabled() then
+    warnRed(self:Text("DUMP_NEEDS_DEBUG"))
+    return
+  end
+
+  if self.turnMeasurement and self.turnMeasurement.active then
+    warnRed(self:Text("TURN_RUNNING"))
+    return
+  end
+
+  local heading = self:GetCurrentCameraHeadingDegrees()
+  local nowMs = getNowMs()
+  if heading == nil or nowMs == nil then
+    warnRed(self:Text("HEADING_UNAVAILABLE"))
+    return
+  end
+
+  self.turnMeasurement = {
+    active = true,
+    startHeadingDeg = heading,
+    lastHeadingDeg = heading,
+    startedAtMs = nowMs,
+    lastSampleAtMs = nowMs,
+    samples = 0,
+    totalSignedDeltaDeg = 0,
+    totalAbsDeltaDeg = 0,
+  }
+
+  EVENT_MANAGER:RegisterForUpdate(TURN_MEASUREMENT_UPDATE_KEY, TURN_MEASUREMENT_UPDATE_MS, function()
+    ADDON:PollTurnMeasurement()
+  end)
+
+  self:DebugPrint(string.format(self:Text("TURN_START"), heading), "TurnMeasurement")
+end
+
+function ADDON:BuildTurnMeasurementSummary(probe)
+  if type(probe) ~= "table" then
+    return nil
+  end
+
+  local elapsedMs = math.max(0, (probe.lastSampleAtMs or probe.startedAtMs or 0) - (probe.startedAtMs or 0))
+  local elapsedSeconds = elapsedMs / 1000
+  local averageSpeed = 0
+  if elapsedSeconds > 0 then
+    averageSpeed = (probe.totalAbsDeltaDeg or 0) / elapsedSeconds
+  end
+  local directDelta = normalizeHeadingDeltaDegrees((probe.lastHeadingDeg or 0) - (probe.startHeadingDeg or 0))
+
+  return string.format(
+    self:Text("TURN_REPORT"),
+    tonumber(probe.startHeadingDeg) or 0,
+    tonumber(probe.lastHeadingDeg) or 0,
+    directDelta,
+    tonumber(probe.totalSignedDeltaDeg) or 0,
+    tonumber(probe.totalAbsDeltaDeg) or 0,
+    elapsedSeconds,
+    averageSpeed,
+    tonumber(probe.samples) or 0
+  )
+end
+
+function ADDON:StopTurnMeasurement()
+  if not self:IsDebugModeEnabled() then
+    warnRed(self:Text("DUMP_NEEDS_DEBUG"))
+    return
+  end
+
+  local probe = self.turnMeasurement
+  if not (probe and probe.active) then
+    warnRed(self:Text("TURN_IDLE"))
+    return
+  end
+
+  EVENT_MANAGER:UnregisterForUpdate(TURN_MEASUREMENT_UPDATE_KEY)
+  probe.active = false
+
+  local heading = self:GetCurrentCameraHeadingDegrees()
+  local nowMs = getNowMs()
+  if heading ~= nil then
+    probe.totalSignedDeltaDeg = (probe.totalSignedDeltaDeg or 0) + normalizeHeadingDeltaDegrees(heading - probe.lastHeadingDeg)
+    probe.totalAbsDeltaDeg = (probe.totalAbsDeltaDeg or 0) + math.abs(normalizeHeadingDeltaDegrees(heading - probe.lastHeadingDeg))
+    probe.lastHeadingDeg = heading
+  end
+  if nowMs ~= nil then
+    probe.lastSampleAtMs = nowMs
+  end
+
+  self.lastTurnMeasurement = probe
+  self.turnMeasurement = nil
+
+  local summary = self:BuildTurnMeasurementSummary(probe)
+  if not summary then
+    warnRed(self:Text("TURN_NO_DATA"))
+    return
+  end
+
+  local batch = self:CreateDebugBatch("TurnMeasurement")
+  self:DebugBatchAdd(batch, self:Text("TURN_STOP"))
+  self:DebugBatchAdd(batch, summary)
+  self:DebugBatchFlush(batch)
+end
+
+function ADDON:PrintTurnMeasurementReport()
+  if not self:IsDebugModeEnabled() then
+    warnRed(self:Text("DUMP_NEEDS_DEBUG"))
+    return
+  end
+
+  local probe = self.turnMeasurement or self.lastTurnMeasurement
+  if not probe then
+    warnRed(self:Text("TURN_NO_DATA"))
+    return
+  end
+
+  local summary = self:BuildTurnMeasurementSummary(probe)
+  if not summary then
+    warnRed(self:Text("TURN_NO_DATA"))
+    return
+  end
+
+  self:DebugPrint(summary, "TurnMeasurement")
+end
+
+local DYNAMIC_TURN_UPDATE_MS = 16
+local DYNAMIC_TURN_UPDATE_KEY = "EZOcamsens_DynamicTurn"
+
+local function getDynamicNumber(key, fallback)
+  local value = ADDON.sv and tonumber(ADDON.sv[key])
+  if value == nil then
+    return fallback
+  end
+  return value
+end
+
+function ADDON:IsPlayerInCombat()
+  local ok, inCombat = pcall(IsUnitInCombat, "player")
+  return ok and inCombat == true
+end
+
+function ADDON:IsDynamicTurnAllowedByCombat()
+  return not (self.sv and self.sv.dynamicOnlyInCombat) or self:IsPlayerInCombat()
+end
+
+function ADDON:ApplyDynamicSensitivity(value, textKey, ...)
+  local actualTpH, methodTpH = self:ApplyTpHValue(value, { suppressFeedback = true })
+  if isDebugEnabled() and actualTpH ~= nil then
+    local lines = {
+      string.format(self:Text(textKey), tonumber(value) or 0, ...),
+      string.format(self:Text("DYNAMIC_READBACK"), tostring(actualTpH), tostring(methodTpH)),
+    }
+    self:SafeDebugViewer(table.concat(lines, "\n"), "DynamicTurn")
+  end
+  return actualTpH, methodTpH
+end
+
+function ADDON:ResetDynamicTurnCycle(heading, nowMs, reason)
+  local state = self.dynamicTurn
+  if not state then return end
+
+  state.combatActive = true
+  state.phase = "fast"
+  state.startHeadingDeg = heading
+  state.lastHeadingDeg = heading
+  state.lastMovementAtMs = nowMs
+  state.accumulatedAbsDeg = 0
+  self:ApplyDynamicSensitivity(
+    getDynamicNumber("dynamicFastTpH", self.defaults.dynamicFastTpH),
+    "DYNAMIC_FAST_APPLIED",
+    reason or self:Text("DYNAMIC_REASON_IDLE")
+  )
+end
+
+function ADDON:SetDynamicTurnWaiting()
+  local state = self.dynamicTurn
+  if state then
+    state.combatActive = false
+    state.phase = "waiting"
+    state.accumulatedAbsDeg = 0
+  end
+  self:ApplyPresets({ bypassGamepadGuard = true, suppressFeedback = true })
+end
+
+function ADDON:StartDynamicTurnAssist()
+  if not (self.sv and self.sv.dynamicEnabled) then
+    return false
+  end
+  if self.dynamicTurn and self.dynamicTurn.active then
+    if not self:IsDynamicTurnAllowedByCombat() then
+      self:SetDynamicTurnWaiting()
+    end
+    return true
+  end
+
+  local nowMs = getNowMs()
+  if nowMs == nil then
+    warnRed(self:Text("HEADING_UNAVAILABLE"))
+    return false
+  end
+
+  self.dynamicTurn = {
+    active = true,
+    combatActive = false,
+    phase = "fast",
+    startHeadingDeg = 0,
+    lastHeadingDeg = 0,
+    startedAtMs = nowMs,
+    lastMovementAtMs = nowMs,
+    accumulatedAbsDeg = 0,
+  }
+
+  if self:IsDynamicTurnAllowedByCombat() then
+    local heading = self:GetCurrentCameraHeadingDegrees()
+    if heading == nil then
+      warnRed(self:Text("HEADING_UNAVAILABLE"))
+      self.dynamicTurn = nil
+      return false
+    end
+    self:ResetDynamicTurnCycle(heading, nowMs, self:Text("DYNAMIC_REASON_START"))
+  else
+    self:SetDynamicTurnWaiting()
+  end
+
+  EVENT_MANAGER:RegisterForUpdate(DYNAMIC_TURN_UPDATE_KEY, DYNAMIC_TURN_UPDATE_MS, function()
+    ADDON:PollDynamicTurnAssist()
+  end)
+
+  if isDebugEnabled() then
+    self:SafeDebugViewer(
+      string.format(
+        self:Text("DYNAMIC_STARTED"),
+        getDynamicNumber("dynamicFastTpH", self.defaults.dynamicFastTpH),
+        getDynamicNumber("dynamicSlowTpH", self.defaults.dynamicSlowTpH),
+        getDynamicNumber("dynamicAngleThreshold", self.defaults.dynamicAngleThreshold)
+      ),
+      "DynamicTurn"
+    )
+  end
+  return true
+end
+
+function ADDON:StopDynamicTurnAssist(restoreSaved)
+  local wasActive = self.dynamicTurn and self.dynamicTurn.active
+  if self.dynamicTurn and self.dynamicTurn.active then
+    EVENT_MANAGER:UnregisterForUpdate(DYNAMIC_TURN_UPDATE_KEY)
+  end
+  self.dynamicTurn = nil
+
+  if restoreSaved then
+    self:ApplyPresets({ bypassGamepadGuard = true, suppressFeedback = true })
+  end
+
+  if isDebugEnabled() and wasActive then
+    self:SafeDebugViewer(self:Text("DYNAMIC_STOPPED"), "DynamicTurn")
+  end
+end
+
+function ADDON:RefreshDynamicTurnAssist(restoreSaved)
+  if self.sv and self.sv.dynamicEnabled then
+    self:StartDynamicTurnAssist()
+  else
+    self:StopDynamicTurnAssist(restoreSaved == true)
+  end
+end
+
+function ADDON:PollDynamicTurnAssist()
+  local state = self.dynamicTurn
+  if not (state and state.active and self.sv and self.sv.dynamicEnabled) then
+    return
+  end
+  local nowMs = getNowMs()
+  if nowMs == nil then
+    return
+  end
+
+  if not self:IsDynamicTurnAllowedByCombat() then
+    if state.combatActive or state.phase ~= "waiting" then
+      self:SetDynamicTurnWaiting()
+    end
+    return
+  end
+
+  if not guardGamepad() then
+    return
+  end
+
+  local heading = self:GetCurrentCameraHeadingDegrees()
+  if heading == nil then
+    return
+  end
+
+  if not state.combatActive then
+    self:ResetDynamicTurnCycle(heading, nowMs, self:Text("DYNAMIC_REASON_COMBAT"))
+    return
+  end
+
+  local stepDelta = normalizeHeadingDeltaDegrees(heading - state.lastHeadingDeg)
+  local stepAbs = math.abs(stepDelta)
+  local movementThreshold = getDynamicNumber("dynamicMovementThreshold", self.defaults.dynamicMovementThreshold)
+  local idleResetMs = getDynamicNumber("dynamicIdleResetMs", self.defaults.dynamicIdleResetMs)
+  local angleThreshold = getDynamicNumber("dynamicAngleThreshold", self.defaults.dynamicAngleThreshold)
+
+  if stepAbs >= movementThreshold then
+    state.accumulatedAbsDeg = (state.accumulatedAbsDeg or 0) + stepAbs
+    state.lastMovementAtMs = nowMs
+
+    if state.phase == "fast" and state.accumulatedAbsDeg >= angleThreshold then
+      state.phase = "slow"
+      self:ApplyDynamicSensitivity(
+        getDynamicNumber("dynamicSlowTpH", self.defaults.dynamicSlowTpH),
+        "DYNAMIC_SLOW_APPLIED",
+        state.accumulatedAbsDeg,
+        self:Text("DYNAMIC_REASON_ANGLE")
+      )
+    end
+  elseif state.phase ~= "fast" and (nowMs - (state.lastMovementAtMs or nowMs)) >= idleResetMs then
+    self:ResetDynamicTurnCycle(heading, nowMs, self:Text("DYNAMIC_REASON_IDLE"))
+    if isDebugEnabled() then
+      self:SafeDebugViewer(self:Text("DYNAMIC_RESET"), "DynamicTurn")
+    end
+  elseif state.phase == "fast" and state.accumulatedAbsDeg > 0 and (nowMs - (state.lastMovementAtMs or nowMs)) >= idleResetMs then
+    self:ResetDynamicTurnCycle(heading, nowMs, self:Text("DYNAMIC_REASON_IDLE"))
+    if isDebugEnabled() then
+      self:SafeDebugViewer(self:Text("DYNAMIC_RESET"), "DynamicTurn")
+    end
+  end
+
+  state.lastHeadingDeg = heading
 end
 
 local function dumpControlGroup(batch, label, settingType)
@@ -709,5 +1203,4 @@ function ADDON:DumpCameraDiagnostics()
   end
   self:DebugBatchAdd(batch, "==== EZOcamsens camera diagnostic dump end ====")
   self:DebugBatchFlush(batch)
-  info(self:Text("DUMP_DONE"))
 end

@@ -2,7 +2,7 @@ local ADDON = {}
 EZOcamsens = ADDON
 
 ADDON.name    = "EZOcamsens"
-ADDON.version = "1.7.1"
+ADDON.version = "1.7.2"
 
 -- Ajustes por defecto. Mantengo todo junto para que sea facil revisar cambios
 -- de balance sin tener que perseguir valores por varios archivos.
@@ -10,6 +10,13 @@ local defaults = {
   applyOnlyInGamepad = true,
   debugMode = false,
   tpH = 1.60,
+  dynamicEnabled = false,
+  dynamicOnlyInCombat = true,
+  dynamicFastTpH = 5.00,
+  dynamicSlowTpH = 1.60,
+  dynamicAngleThreshold = 180,
+  dynamicIdleResetMs = 300,
+  dynamicMovementThreshold = 0.25,
   chatEnabled  = true,
   language = "auto", -- "auto" | "es" | "en"
 }
@@ -88,6 +95,13 @@ function ADDON:MigrateSavedVariables()
     local tp = tonumber(self.sv.tp) or defaults.tpH
     self.sv.tpH = tp
   end
+  if self.sv.dynamicEnabled == nil then self.sv.dynamicEnabled = defaults.dynamicEnabled end
+  if self.sv.dynamicOnlyInCombat == nil then self.sv.dynamicOnlyInCombat = defaults.dynamicOnlyInCombat end
+  if self.sv.dynamicFastTpH == nil then self.sv.dynamicFastTpH = self.sv.tpH or defaults.dynamicFastTpH end
+  if self.sv.dynamicSlowTpH == nil then self.sv.dynamicSlowTpH = defaults.dynamicSlowTpH end
+  if self.sv.dynamicAngleThreshold == nil then self.sv.dynamicAngleThreshold = defaults.dynamicAngleThreshold end
+  if self.sv.dynamicIdleResetMs == nil then self.sv.dynamicIdleResetMs = defaults.dynamicIdleResetMs end
+  if self.sv.dynamicMovementThreshold == nil then self.sv.dynamicMovementThreshold = defaults.dynamicMovementThreshold end
   self.sv.tp = nil
   self.sv.capMultiplier = nil
   self.sv.autoApplyCapsOnLoad = nil
@@ -110,6 +124,7 @@ function ADDON:OnLoaded(event, addonName)
   self:InitLocale()
   self:DiscoverCameraSliders()
   self:SetupMenu()
+  if self.RefreshDynamicTurnAssist then self:RefreshDynamicTurnAssist(true) end
 
   SLASH_COMMANDS["/ezocamsens"] = function(txt)
     txt = zo_strtrim(txt or "")
@@ -120,13 +135,11 @@ function ADDON:OnLoaded(event, addonName)
       EZOcamsens:PrintStatus()
     elseif lower == "apply" or lower == "aplicar" then
       EZOcamsens:ApplyPresets()
-    elseif a1 == "debug" or lower == "dump" or lower == "diag" or lower == "probe" or lower == "sonda" then
+    elseif a1 == "debug" or lower == "dump" or lower == "diag" then
       if a1 == "debug" then
         EZOcamsens:ExecuteDebugCommand(a2)
       elseif lower == "dump" or lower == "diag" then
         EZOcamsens:ExecuteDebugCommand("dump")
-      elseif lower == "probe" or lower == "sonda" then
-        EZOcamsens:ExecuteDebugCommand("probe")
       end
     else
       if EZOcamsens.chat and EZOcamsens.sv and EZOcamsens.sv.chatEnabled then
