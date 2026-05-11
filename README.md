@@ -4,25 +4,25 @@ Addon independiente para The Elder Scrolls Online.
 
 ## Desarrollo local
 
-- Repositorio local: `Z:\Dev\EZOcamsens`
+- Repositorio local: `\\RZRNAS\Zuriplayer\Dev\EZOcamsens`
 - Carpeta de addons de ESO: `C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns`
-- Enlace esperado: `C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns\EZOcamsens -> Z:\Dev\EZOcamsens`
+- Enlace esperado: `C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns\EZOcamsens -> \\RZRNAS\Zuriplayer\Dev\EZOcamsens`
 
 ## Alcance actual
 
-El addon solo gestiona una variable de juego:
+El addon gestiona un valor horizontal para mando:
 
-- `GamepadSensitivityThirdPersonX`
+- `GamepadSensitivityThirdPerson.2` y `GamepadSensitivityThirdPersonX`
 
-Todo el codigo, menu y restauracion por defecto se han simplificado para dejar
-estable el ajuste de sensibilidad horizontal de tercera persona antes de crecer
-hacia otros ejes o perspectivas.
+El menú queda centrado en tercera persona horizontal. Primera persona queda fuera
+del alcance del addon.
 
 ## Valor base del juego
 
 Valor base tomado del perfil PTS limpio usado como referencia:
 
 - `GamepadSensitivityThirdPersonX = 0.85`
+- `GamepadSensitivityThirdPerson.2 = 0.85`
 
 ## Conclusión tras comparar con el addon original
 
@@ -30,15 +30,15 @@ Al comparar este proyecto con el ZIP original de ChatGPT, la diferencia importan
 no estaba en qué variables existen en `UserSettings.txt`, sino en cómo se aplicaban
 los cambios dentro de ESO.
 
-Decision de proyecto:
+Decisión de proyecto:
 
-- Detectar primero el control nativo de tercera persona horizontal en
-  `ZO_OptionsPanel_Camera_ControlData[SETTING_TYPE_GAMEPAD]`.
-- Aplicar por `SetSetting(...)` cuando ese control exista.
-- Mantener `SetCVar("GamepadSensitivityThirdPersonX", ...)` como fallback.
-- Restaurar valores por defecto al valor base real del juego (`0.85`), no a un
+- No usar `SetSetting(...)` para la sensibilidad base de mando: los controles
+  nativos publicados son sensibilidad general de cámara, no horizontal de mando.
+- Aplicar las CVar `.2` y `X` de tercera persona, porque el juego puede leer una
+  u otra ruta según versión y modo.
+- Restaurar valores por defecto a los valores base reales del juego, no a un
   snapshot del usuario.
-- Mantener el panel del addon pequeño y centrado en `third-person horizontal`.
+- Mantener el panel pequeño y centrado en sensibilidad horizontal con mando.
 
 Para recrear el entorno local:
 

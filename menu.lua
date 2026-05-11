@@ -16,8 +16,32 @@ function ADDON:SetupMenu()
     ADDON.lamPanel = LAM:RegisterAddonPanel("EZOcamsensPanel", panelData)
   end
 
+  local function applyBaseIfNeeded()
+    if ADDON.sv.dynamicEnabled then
+      if ADDON.IsDynamicTurnAllowed and ADDON:IsDynamicTurnAllowed() and ADDON.StopDynamicTurnAssist and ADDON.StartDynamicTurnAssist then
+        ADDON:StopDynamicTurnAssist(false)
+        ADDON:StartDynamicTurnAssist()
+      elseif ADDON.SetDynamicTurnWaiting then
+        ADDON:SetDynamicTurnWaiting()
+      end
+    elseif ADDON.ApplyPresets then
+      ADDON:ApplyPresets({ bypassGamepadGuard = true, suppressFeedback = true })
+    end
+  end
+
   local options = {
     { type="description", text=ADDON:Text("DESC") },
+    { type="description", text=ADDON:Text("SCOPE_NOTE") },
+
+    { type="header", name=ADDON:Text("STORAGE_HEADER") },
+    { type="dropdown", name=ADDON:Text("STORAGE_SCOPE"),
+      tooltip=ADDON:Text("STORAGE_SCOPE_TT"),
+      choices={ADDON:Text("STORAGE_SCOPE_CHARACTER"), ADDON:Text("STORAGE_SCOPE_ACCOUNT")},
+      choicesValues={"character","account"},
+      getFunc=function() return ADDON:GetSettingsScope() end,
+      setFunc=function(val) ADDON:SetSettingsScope(val) end,
+      warning=ADDON:Text("SCOPE_RELOAD_NOTICE"),
+    },
 
     { type="header", name=ADDON:Text("PRESETS_HEADER") },
     { type="description", text=ADDON:Text("APPLY_HINT") },
@@ -26,16 +50,10 @@ function ADDON:SetupMenu()
       getFunc=function() return ADDON.sv.tpH end,
       setFunc=function(v)
         ADDON.sv.tpH = v
-        if ADDON.sv.dynamicEnabled then
-          if ADDON.SetDynamicTurnWaiting and ADDON.IsDynamicTurnAllowedByCombat and not ADDON:IsDynamicTurnAllowedByCombat() then
-            ADDON:SetDynamicTurnWaiting()
-          end
-        elseif ADDON.ApplyPresets then
-          ADDON:ApplyPresets({ bypassGamepadGuard = true, suppressFeedback = true })
-        end
-      end, default=1.60 },
+        applyBaseIfNeeded()
+      end, default=0.85 },
     }},
-    { type="button", name=ADDON:Text("APPLY_NOW"), func=function() ADDON:ApplyPresets({ bypassGamepadGuard = true }) end },
+    { type="button", name=ADDON:Text("APPLY_NOW"), func=function() ADDON:ApplyPresets({ bypassGamepadGuard = true, forceChat = true }) end },
 
     { type="header", name=ADDON:Text("DYNAMIC_HEADER") },
     { type="checkbox", name=ADDON:Text("DYNAMIC_ENABLED"),
@@ -55,6 +73,16 @@ function ADDON:SetupMenu()
           ADDON:RefreshDynamicTurnAssist(false)
         end
       end, default=true },
+    { type="checkbox", name=ADDON:Text("DYNAMIC_ONLY_TANK"),
+      tooltip=ADDON:Text("DYNAMIC_ONLY_TANK_TT"),
+      getFunc=function() return ADDON.sv.dynamicOnlyTankRole end,
+      setFunc=function(v)
+        ADDON.sv.dynamicOnlyTankRole = v
+        if ADDON.RefreshDynamicTurnAssist then
+          ADDON:StopDynamicTurnAssist(true)
+          ADDON:RefreshDynamicTurnAssist(false)
+        end
+      end, default=false },
     { type="slider", name=ADDON:Text("DYNAMIC_FAST"), min=0.10, max=5.0, step=0.01, decimals=2,
       getFunc=function() return ADDON.sv.dynamicFastTpH end,
       setFunc=function(v)
@@ -93,13 +121,14 @@ function ADDON:SetupMenu()
       getFunc=function() return ADDON:IsDebugModeEnabled() end,
       setFunc=function(v) ADDON:SetDebugModeEnabled(v) end, default=false },
 
-    { type="button", name=ADDON:Text("SHOW_STATUS"), func=function() ADDON:PrintStatus() end },
-    { type="button", name=ADDON:Text("DUMP_BUTTON"),
-      func=function() ADDON:DumpCameraDiagnostics() end,
-      disabled=function() return not ADDON:IsDebugModeEnabled() end },
+    { type="button", name=ADDON:Text("SHOW_STATUS"),
+      tooltip=ADDON:Text("SHOW_STATUS_TT"),
+      disabled=function() return not ADDON:IsDebugModeEnabled() end,
+      func=function() ADDON:SendStatusToDebugViewer() end },
 
     { type="header", name=ADDON:Text("MAINTENANCE") },
     { type="dropdown", name=ADDON:Text("LANG_DD"),
+      tooltip=ADDON:Text("LANG_DD_TT"),
       choices={ADDON:Text("LANG_AUTO"), ADDON:Text("LANG_ES"), ADDON:Text("LANG_EN")},
       choicesValues={"auto","es","en"},
       sort="name-up",
