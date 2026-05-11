@@ -16,7 +16,7 @@ Este repositorio usa una configuracion local por addon en `ezo-addon.json`. No d
 Para EZOcamsens, el ZIP se genera como:
 
 ```text
-dist/EZOcamsens_v1.7.1.zip
+dist/EZOcamsens_v1.7.16.zip
 ```
 
 Dentro del ZIP siempre debe existir una carpeta raiz:
@@ -83,6 +83,6 @@ Get-Content .\ezo-addon.json -Raw | ConvertFrom-Json
 Para revisar el contenido del ZIP:
 
 ```powershell
-Expand-Archive .\dist\EZOcamsens_v1.7.1.zip -DestinationPath .\dist\check -Force
+Expand-Archive .\dist\EZOcamsens_v1.7.16.zip -DestinationPath .\dist\check -Force
 Get-ChildItem .\dist\check -Recurse -File
 ```

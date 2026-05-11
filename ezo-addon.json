@@ -3,14 +3,14 @@
   "addon": {
     "id": "ezocamsens",
     "name": "EZOcamsens",
-    "version": "1.7.1",
+    "version": "1.7.16",
     "status": "beta",
     "phase": "closed-testing",
     "visibility": "public",
     "manifest": "EZOcamsens.txt",
     "package": {
       "rootFolderName": "EZOcamsens",
-      "zipName": "EZOcamsens_v1.7.1.zip",
+      "zipName": "EZOcamsens_v1.7.16.zip",
       "outputPath": "dist",
       "include": [
         "*.txt",
