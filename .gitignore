@@ -17,6 +17,9 @@ dist/
 secrets.*
 *.local*
 AGENTS.md
+AGENTS.local.md
+notes.private.*
+private-notes.*
 local/
 private/
 scratch/
@@ -31,6 +34,8 @@ temp/
 *.backup
 *.old
 *.orig
+*.swp
+*.swo
 *~
 Thumbs.db
 .DS_Store

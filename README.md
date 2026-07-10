@@ -1,8 +1,12 @@
 # EZOcamsens
 
-EZOcamsens is a beta addon for The Elder Scrolls Online focused on controller camera sensitivity in third person.
+EZOcamsens is a public beta addon for The Elder Scrolls Online focused on controller camera sensitivity in third person.
 
-Current scope: third-person horizontal camera sensitivity for gamepad play.
+Prefer Spanish? Read the [Spanish README](README.es.md).
+
+Support, bug reports and suggestions: https://discord.gg/ekw8zUAcRm
+
+Current scope: third-person horizontal camera sensitivity for gamepad play, including an optional experimental dynamic turn mode.
 
 ## Beta Status
 
@@ -12,6 +16,7 @@ This addon is in public beta. It is intentionally small and conservative:
 - It does not manage first-person camera sensitivity.
 - It does not manage vertical sensitivity. A vertical prototype was tested and discarded for now because the useful range is small and reliable behaviour would add too much complexity for the current goal.
 - It does not modify ESO input, keybind navigation, vanilla menus or combat actions.
+- It keeps debug output behind the addon debug option and DebugLogViewer/LibDebugLogger.
 
 ## Requirements
 
@@ -48,6 +53,33 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
   - Optional tank-role-only mode.
 - Supports English and Spanish UI text.
 
+## Addon Options
+
+- Settings storage:
+  - Per character.
+  - Account-wide within the same server.
+- Base sensitivity:
+  - Third-person horizontal sensitivity.
+  - Apply setting button to reapply the saved value.
+- Experimental dynamic turn:
+  - Enable dynamic turn.
+  - Apply only in combat.
+  - Only if my role is tank.
+  - Fast sensitivity.
+  - Slow sensitivity.
+  - Angle before slow mode.
+  - Idle reset in milliseconds.
+  - Minimum movement to count a turn.
+- Behaviour:
+  - Apply only in gamepad mode.
+  - Show feedback in chat.
+- Support and debug:
+  - Enable debug mode.
+  - Show current values in DebugLogViewer.
+- Language and reset:
+  - Automatic, Spanish or English.
+  - Restore defaults.
+
 ## Commands
 
 ```text
@@ -64,6 +96,9 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 - The addon only writes the camera sensitivity CVars listed above.
 - Restore defaults returns the managed third-person horizontal sensitivity to the game default value from a clean PTS profile: `0.85`.
 - Debug output is sent to DebugLogViewer when debug mode is enabled.
+- `/ezocamsens debug` is blocked unless debug mode is enabled.
+- The dynamic mode only changes the same third-person horizontal sensitivity value; it does not turn the camera, move the character or automate combat.
+- The tank-role option only checks the selected ESO group role; it does not change role, queue status or group state.
 - No real Discord webhook URLs, tokens or secrets are stored in this repository.
 
 ## Testing Notes
@@ -74,6 +109,9 @@ Recommended beta checks:
 - Use `Apply setting` and confirm the value is restored in the ESO camera feel.
 - Use `Restore defaults` and confirm the value returns to `0.85`.
 - Test dynamic horizontal mode in combat and out of combat.
+- Test the `Apply only in gamepad mode` option with gamepad preferred mode enabled and disabled.
+- Test per-character and account-wide storage on the same server after a UI reload.
+- Test Spanish, English and automatic language selection.
 - If debug mode is enabled, use `/ezocamsens debug` and inspect DebugLogViewer.
 
 ## Known Limits
@@ -81,6 +119,7 @@ Recommended beta checks:
 - First-person support was removed because ESO did not behave consistently enough for this addon scope.
 - Vertical camera management is documented as intentionally out of scope for now.
 - The addon targets controller/gamepad play.
+- The experimental dynamic mode depends on ESO camera heading readback being available in the current game session.
 
 ## License
 
