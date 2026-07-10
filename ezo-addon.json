@@ -5,7 +5,7 @@
     "name": "EZOcamsens",
     "version": "1.7.16",
     "status": "beta",
-    "phase": "closed-testing",
+    "phase": "public-beta",
     "visibility": "public",
     "manifest": "EZOcamsens.txt",
     "package": {

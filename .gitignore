@@ -1,7 +1,36 @@
+# Local ESO/runtime data
 SavedVariables/
-*.log
+dist/
+
+# Local assistant/agent/editor state
+.codex/
+.agents/
+.cursor/
+.continue/
 .vscode/
 .idea/
+
+# Local environment and private material
+.env
+.env.*
+*.secret*
+secrets.*
+*.local*
+AGENTS.md
+local/
+private/
+scratch/
+tmp/
+temp/
+
+# Logs, backups and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*~
 Thumbs.db
 .DS_Store
-dist/
