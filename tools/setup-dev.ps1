@@ -1,12 +1,17 @@
 [CmdletBinding()]
 param(
+    [string]$AddOnsRoot,
     [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$addonsRoot = "C:\Users\zurip\Documents\Elder Scrolls Online\live\AddOns"
+$addonsRoot = if ($AddOnsRoot) {
+    $AddOnsRoot
+} else {
+    Join-Path $env:USERPROFILE "Documents\Elder Scrolls Online\live\AddOns"
+}
 $linkPath = Join-Path $addonsRoot "EZOcamsens"
 
 Write-Host "Project root: $projectRoot"
