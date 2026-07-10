@@ -4,7 +4,7 @@ EZOcamsens es un addon en beta pública para The Elder Scrolls Online centrado e
 
 ¿Prefieres inglés? Lee el [README en inglés](README.md).
 
-Soporte, errores y sugerencias: https://discord.gg/ekw8zUAcRm
+Soporte, errores y sugerencias: https://discord.gg/SbgPQqRq3S
 
 Alcance actual: sensibilidad horizontal de cámara en tercera persona para juego con mando, incluyendo un modo experimental opcional de giro dinámico.
 
