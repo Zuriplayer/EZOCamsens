@@ -62,15 +62,25 @@ function ADDON:EnsureDebugLogger()
     self.logger = self.runtime.debugLogger
     return self.runtime.debugLogger
   end
+  if self.runtime.debugLoggerUnavailable == true then
+    return nil
+  end
+
+  local lib = _G.LibDebugLogger
+  if type(lib) ~= "function" and type(lib) ~= "table" then
+    self.runtime.debugLoggerUnavailable = true
+    return nil
+  end
 
   local ok, logger = pcall(function()
-    if not LibDebugLogger then
-      return nil
+    local created = nil
+    if type(lib) == "function" then
+      created = lib(self.name)
+    elseif type(lib.Create) == "function" then
+      created = lib:Create(self.name)
     end
-
-    local created = LibDebugLogger(self.name)
-    if created and type(created.SetMinLevelOverride) == "function" and LibDebugLogger.LOG_LEVEL_DEBUG ~= nil then
-      created:SetMinLevelOverride(LibDebugLogger.LOG_LEVEL_DEBUG)
+    if created and type(created.SetMinLevelOverride) == "function" and type(lib) == "table" and lib.LOG_LEVEL_DEBUG ~= nil then
+      created:SetMinLevelOverride(lib.LOG_LEVEL_DEBUG)
     end
     if created and type(created.SetLogTracesOverride) == "function" then
       created:SetLogTracesOverride(false)
@@ -80,19 +90,24 @@ function ADDON:EnsureDebugLogger()
 
   if ok and logger then
     self.runtime.debugLogger = logger
+    self.runtime.debugLoggerUnavailable = false
     self.logger = logger
     return logger
   end
 
+  self.runtime.debugLoggerUnavailable = true
   return nil
 end
 
 function ADDON:InitializeDebug()
   self.runtime = self.runtime or {}
-  self:EnsureDebugLogger()
+  if self:IsDebugModeEnabled() then
+    self:EnsureDebugLogger()
+  end
 end
 
 function ADDON:RefreshDebugLoggerState()
+  if not self:IsDebugModeEnabled() then return end
   local logger = self:EnsureDebugLogger()
   if not logger then return end
   if logger.SetEnabled then
@@ -136,8 +151,6 @@ function ADDON:SafeDebugViewer(msg, subTag)
       logger:Debug(tostring(msg))
     elseif type(logger.Info) == "function" then
       logger:Info(tostring(msg))
-    else
-      error("LibDebugLogger logger has no Debug/Info method")
     end
   end)
 
@@ -149,7 +162,7 @@ function ADDON:SafeDebugViewer(msg, subTag)
 end
 
 function ADDON:DebugPrint(msg, subTag)
-  if isDebugEnabled() and self:HasDebugViewer() then
+  if isDebugEnabled() then
     return self:SafeDebugViewer(msg, subTag or "Debug")
   end
   return false
@@ -173,7 +186,7 @@ function ADDON:DebugBatchAdd(batch, msg)
 end
 
 function ADDON:DebugBatchFlush(batch)
-  if not (isDebugEnabled() and self:HasDebugViewer()) then return false end
+  if not isDebugEnabled() then return false end
   if type(batch) ~= "table" or type(batch.lines) ~= "table" or #batch.lines == 0 then
     return false
   end
