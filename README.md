@@ -57,6 +57,8 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 
 When EZOCore is installed, EZOcamsens is configured directly inside `Settings > EZO` and does not add a duplicate entry to the standard addon settings list. Its standalone LibAddonMenu panel is registered only as a compatibility fallback when EZOCore is unavailable.
 
+The settings panel follows the EZO family style: each section heading has a purple information icon with general help in its tooltip, and each field keeps its own specific help in the field tooltip. Long explanatory paragraphs are not kept permanently visible in the panel.
+
 - Settings storage:
   - Per character.
   - Account-wide within the same server.
@@ -114,6 +116,7 @@ Recommended beta checks:
 - Test the `Apply only in gamepad mode` option with gamepad preferred mode enabled and disabled.
 - Test per-character and account-wide storage on the same server after a UI reload.
 - Test Spanish, English and automatic language selection.
+- Open the settings panel and confirm each section heading shows the purple information icon and tooltip help.
 - If debug mode is enabled, use `/ezocamsens debug` and inspect DebugLogViewer.
 
 ## Known Limits

@@ -1,7 +1,7 @@
 ## Title: E|cB040FFZ|rOcamsens
 ## Author: @Zuriplayer
-## Version: 1.7.16
-## AddOnVersion: 10716
+## Version: 1.7.17
+## AddOnVersion: 10717
 ## APIVersion: 101049 101050
 ## Description: Focused tuning for controller horizontal camera sensitivity.
 ## DependsOn: LibAddonMenu-2.0 LibChatMessage

@@ -57,6 +57,8 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 
 Cuando EZOCore está instalado, EZOcamsens se configura directamente dentro de `Settings > EZO` y no añade una entrada duplicada a la lista estándar de configuración. Su panel independiente de LibAddonMenu solo se registra como fallback de compatibilidad cuando EZOCore no está disponible.
 
+El panel de configuración sigue el estilo de la familia EZO: cada cabecera de sección tiene un icono informativo morado con ayuda general en su tooltip, y cada campo mantiene su ayuda concreta en el tooltip del propio campo. Los párrafos explicativos largos no quedan visibles de forma permanente en el panel.
+
 - Guardado de ajustes:
   - Por personaje.
   - Por cuenta dentro del mismo servidor.
@@ -114,6 +116,7 @@ Comprobaciones recomendadas para beta:
 - Probar la opción `Aplicar solo en modo gamepad` con el modo preferente de gamepad activado y desactivado.
 - Probar el guardado por personaje y por cuenta en el mismo servidor después de recargar la interfaz.
 - Probar la selección de idioma en español, inglés y automático.
+- Abrir el panel de configuración y confirmar que cada cabecera de sección muestra el icono informativo morado y su ayuda en tooltip.
 - Si el modo debug está activo, usar `/ezocamsens debug` y revisar DebugLogViewer.
 
 ## Límites Conocidos

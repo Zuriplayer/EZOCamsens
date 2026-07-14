@@ -2,7 +2,7 @@ local ADDON = {}
 EZOcamsens = ADDON
 
 ADDON.name    = "EZOcamsens"
-ADDON.version = "1.7.16"
+ADDON.version = "1.7.17"
 ADDON.savedVarsVersion = 9
 ADDON.savedVarsNamespace = "settings"
 ADDON.savedVarsMetaNamespace = "meta"
@@ -243,6 +243,7 @@ function ADDON:OnLoaded(event, addonName)
   if self.RefreshDebugLoggerState then self:RefreshDebugLoggerState() end
   self:InitChat()
   self:InitLocale()
+  if self.RegisterEZOCoreLanguageCallback then self:RegisterEZOCoreLanguageCallback() end
   self:SetupMenu()
   if self.RefreshDynamicTurnAssist then self:RefreshDynamicTurnAssist(true) end
 

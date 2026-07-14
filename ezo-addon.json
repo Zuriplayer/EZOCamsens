@@ -4,6 +4,7 @@
     "id": "ezocamsens",
     "name": "EZOcamsens",
     "version": "1.7.16",
+    "stage": "beta",
     "status": "beta",
     "phase": "public-beta",
     "visibility": "public",

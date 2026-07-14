@@ -56,6 +56,66 @@ function ADDON:InitLogger()
   self:InitializeDebug()
 end
 
+function ADDON.GetDefaultLanguage()
+  return "auto"
+end
+
+function ADDON.GetClientLanguage()
+  local ok, v = pcall(GetCVar, "Language.2")
+  if ok and type(v) == "string" and string.sub(string.lower(v), 1, 2) == "es" then
+    return "es"
+  end
+  return "en"
+end
+
+function ADDON:GetEffectiveLanguage(language)
+  local sel = tostring(language or self:GetDefaultLanguage())
+  if self.IsLanguageManagedByEZOCore and self:IsLanguageManagedByEZOCore() then
+    local ok, inherited = pcall(function()
+      return EZOCore:GetLanguage()
+    end)
+    if ok and (inherited == "es" or inherited == "en") then
+      return inherited
+    end
+  end
+  if sel == "inherit" then
+    sel = "auto"
+  end
+  if sel == "es" or sel == "en" then
+    return sel
+  end
+  return self:GetClientLanguage()
+end
+
+function ADDON.IsLanguageManagedByEZOCore()
+  if not (EZOCore and type(EZOCore.IsLanguageGloballyManaged) == "function") then
+    return false
+  end
+  local ok, managed = pcall(function()
+    return EZOCore:IsLanguageGloballyManaged()
+  end)
+  return ok and managed == true
+end
+
+function ADDON:RegisterEZOCoreLanguageCallback()
+  if self._ezoCoreLanguageCallbackRegistered
+      or not (EZOCore and type(EZOCore.RegisterCallback) == "function") then
+    return false
+  end
+
+  local eventName = EZOCore.EVENT_LANGUAGE_CHANGED or "EZO_CORE_LANGUAGE_CHANGED"
+  local ok, result = pcall(function()
+    return EZOCore:RegisterCallback(eventName, function()
+      if self.sv then
+        self:InitLocale()
+        self:RefreshLAM()
+      end
+    end)
+  end)
+  self._ezoCoreLanguageCallbackRegistered = ok and result == true
+  return self._ezoCoreLanguageCallbackRegistered
+end
+
 function ADDON:EnsureDebugLogger()
   self.runtime = self.runtime or {}
   if self.runtime.debugLogger then
@@ -196,9 +256,8 @@ end
 
 local STR = {
   es = {
-    DESC = "Ajusta la sensibilidad horizontal de la cámara en tercera persona usando mando.",
-    SCOPE_NOTE = "Los ajustes se separan por servidor. Puedes guardarlos por personaje o compartirlos por cuenta.",
     STORAGE_HEADER = "Guardado de ajustes",
+    STORAGE_HEADER_TT = "Los ajustes se separan por servidor. Puedes guardarlos por personaje o compartirlos por cuenta dentro del mismo servidor.",
     STORAGE_SCOPE = "Guardar ajustes",
     STORAGE_SCOPE_TT = "Por personaje cada personaje tiene sus valores. Por cuenta se comparten dentro del mismo servidor.",
     STORAGE_SCOPE_CHARACTER = "Por personaje",
@@ -206,11 +265,15 @@ local STR = {
     SCOPE_RELOAD_NOTICE = "Se recargará la interfaz para cambiar el tipo de guardado.",
     AUTHOR = "Por: @Zuriplayer",
     PRESETS_HEADER = "Sensibilidad base",
+    PRESETS_HEADER_TT = "Ajuste principal del addon: sensibilidad horizontal de cámara en tercera persona usando mando.",
     TP_HEADER = "Tercera persona",
+    TP_HEADER_TT = "Valores aplicados a la cámara en tercera persona.",
     TP_H = "Sensibilidad horizontal",
+    TP_H_TT = "Valor horizontal guardado por el addon. Al moverlo se aplica al momento salvo que el giro dinámico esté gestionando el valor.",
     APPLY_NOW = "Aplicar ajuste",
-    APPLY_HINT = "Al mover el valor se aplica al momento. El botón Aplicar ajuste vuelve a poner el valor guardado.",
+    APPLY_NOW_TT = "Vuelve a aplicar el valor horizontal guardado, útil después de cambiar opciones o tras una recarga.",
     DYNAMIC_HEADER = "Giro dinámico experimental",
+    DYNAMIC_HEADER_TT = "Modo experimental que empieza con sensibilidad rápida y cambia a lenta tras superar el ángulo configurado. Solo modifica la sensibilidad horizontal de tercera persona.",
     DYNAMIC_ENABLED = "Activar giro dinámico",
     DYNAMIC_ENABLED_TT = "Empieza girando rápido y cambia a lento cuando superas el ángulo elegido.",
     DYNAMIC_ONLY_COMBAT = "Aplicar solo en combate",
@@ -218,23 +281,33 @@ local STR = {
     DYNAMIC_ONLY_TANK = "Solo si tengo rol de tanque",
     DYNAMIC_ONLY_TANK_TT = "Si está activo, el giro dinámico solo funciona cuando tu rol marcado es tanque.",
     DYNAMIC_FAST = "Sensibilidad rápida",
+    DYNAMIC_FAST_TT = "Valor usado al comenzar un ciclo de giro dinámico.",
     DYNAMIC_SLOW = "Sensibilidad lenta",
+    DYNAMIC_SLOW_TT = "Valor usado cuando el giro acumulado supera el ángulo configurado.",
     DYNAMIC_ANGLE = "Ángulo para cambiar a lento",
+    DYNAMIC_ANGLE_TT = "Grados acumulados de giro horizontal necesarios para pasar de sensibilidad rápida a lenta.",
     DYNAMIC_IDLE = "Reposo para reiniciar (ms)",
+    DYNAMIC_IDLE_TT = "Tiempo sin giro suficiente para reiniciar el ciclo dinámico y volver a sensibilidad rápida.",
     DYNAMIC_MOVEMENT = "Movimiento mínimo para contar giro",
+    DYNAMIC_MOVEMENT_TT = "Movimiento horizontal mínimo por muestra para que el addon lo cuente como giro real.",
     BEHAVIOR = "Comportamiento",
+    BEHAVIOR_TT = "Opciones generales de aplicación y mensajes visibles del addon.",
     ONLY_GP = "Aplicar solo en modo gamepad",
     ONLY_GP_TT = "Evita cambios si no estás jugando con mando.",
     CHAT_MSG = "Mostrar mensajes en chat",
+    CHAT_MSG_TT = "Muestra avisos cortos del addon en el chat. El debug detallado sigue usando DebugLogViewer.",
     SUPPORT = "Soporte y debug",
+    SUPPORT_TT = "Herramientas de diagnóstico. El volcado técnico solo se envía a DebugLogViewer cuando el modo debug está activo.",
     DEBUG_MODE = "Activar modo debug",
     DEBUG_MODE_TT = "Activa el modo debug del addon y manda la información a DebugLogViewer.",
     SHOW_STATUS = "Mostrar valores actuales",
     MAINTENANCE = "Idioma y restauración",
+    MAINTENANCE_TT = "Opciones de idioma del panel y restauración segura de los valores gestionados por el addon.",
     RESTORE_DEFAULTS = "Restaurar valores por defecto",
+    RESTORE_DEFAULTS_TT = "Restaura opciones del addon y devuelve la sensibilidad horizontal de tercera persona al valor base del juego.",
     RESTORE_WARN = "Se restaurará la sensibilidad horizontal de tercera persona al valor por defecto del juego y también las opciones del addon.",
     LANG_DD = "Selecciona idioma",
-    LANG_DD_TT = "En automático, si el cliente no está en español, el addon usa inglés.",
+    LANG_DD_TT = "Idioma local usado cuando EZOCore no está instalado o su modo de idioma es 'dejar que cada addon elija'. Los idiomas centrales de EZOCore desactivan este selector.",
     LANG_AUTO = "Automático (cliente)",
     LANG_ES = "Español",
     LANG_EN = "English",
@@ -294,9 +367,8 @@ local STR = {
     DEBUG_SNAPSHOT_END = "==== EZOcamsens volcado debug fin ====",
   },
   en = {
-    DESC = "Adjusts third-person horizontal camera sensitivity for controller play.",
-    SCOPE_NOTE = "Settings are separated per server. You can save them per character or share them account-wide.",
     STORAGE_HEADER = "Settings storage",
+    STORAGE_HEADER_TT = "Settings are separated per server. You can save them per character or share them account-wide on the same server.",
     STORAGE_SCOPE = "Save settings",
     STORAGE_SCOPE_TT = "Per character keeps each character separate. Account-wide shares values on the same server.",
     STORAGE_SCOPE_CHARACTER = "Per character",
@@ -304,11 +376,15 @@ local STR = {
     SCOPE_RELOAD_NOTICE = "The UI will reload to change the settings storage mode.",
     AUTHOR = "By: @Zuriplayer",
     PRESETS_HEADER = "Base sensitivity",
+    PRESETS_HEADER_TT = "Main addon setting: third-person horizontal camera sensitivity for controller play.",
     TP_HEADER = "Third-person",
+    TP_HEADER_TT = "Values applied to the third-person camera.",
     TP_H = "Horizontal sensitivity",
+    TP_H_TT = "Horizontal value saved by the addon. Moving it applies immediately unless dynamic turn is managing the value.",
     APPLY_NOW = "Apply setting",
-    APPLY_HINT = "Moving the value applies it immediately. The Apply setting button reapplies the saved value.",
+    APPLY_NOW_TT = "Reapplies the saved horizontal value, useful after changing options or after a reload.",
     DYNAMIC_HEADER = "Experimental dynamic turn",
+    DYNAMIC_HEADER_TT = "Experimental mode that starts with fast sensitivity and switches to slow after the configured angle. It only changes third-person horizontal sensitivity.",
     DYNAMIC_ENABLED = "Enable dynamic turn",
     DYNAMIC_ENABLED_TT = "Starts turning fast and switches to slow after the chosen angle.",
     DYNAMIC_ONLY_COMBAT = "Apply only in combat",
@@ -316,23 +392,33 @@ local STR = {
     DYNAMIC_ONLY_TANK = "Only if my role is tank",
     DYNAMIC_ONLY_TANK_TT = "When enabled, dynamic turn only runs while your selected role is tank.",
     DYNAMIC_FAST = "Fast sensitivity",
+    DYNAMIC_FAST_TT = "Value used at the start of a dynamic turn cycle.",
     DYNAMIC_SLOW = "Slow sensitivity",
+    DYNAMIC_SLOW_TT = "Value used after the accumulated turn passes the configured angle.",
     DYNAMIC_ANGLE = "Angle before slow mode",
+    DYNAMIC_ANGLE_TT = "Accumulated horizontal turn degrees required to switch from fast to slow sensitivity.",
     DYNAMIC_IDLE = "Idle reset (ms)",
+    DYNAMIC_IDLE_TT = "Time without turning required to reset the dynamic cycle back to fast sensitivity.",
     DYNAMIC_MOVEMENT = "Minimum movement to count a turn",
+    DYNAMIC_MOVEMENT_TT = "Minimum horizontal movement per sample before the addon counts it as real turning.",
     BEHAVIOR = "Behavior",
+    BEHAVIOR_TT = "General application and visible message options for the addon.",
     ONLY_GP = "Apply only in gamepad mode",
     ONLY_GP_TT = "Prevents changes if you are not playing with a controller.",
     CHAT_MSG = "Show feedback in chat",
+    CHAT_MSG_TT = "Shows short addon notices in chat. Detailed debug still uses DebugLogViewer.",
     SUPPORT = "Support & debug",
+    SUPPORT_TT = "Diagnostic tools. Technical dumps are only sent to DebugLogViewer when debug mode is enabled.",
     DEBUG_MODE = "Enable debug mode",
     DEBUG_MODE_TT = "Enables addon debug mode and sends information to DebugLogViewer.",
     SHOW_STATUS = "Show current values",
     MAINTENANCE = "Language & reset",
+    MAINTENANCE_TT = "Panel language options and safe reset for values managed by the addon.",
     RESTORE_DEFAULTS = "Restore defaults",
+    RESTORE_DEFAULTS_TT = "Restores addon options and returns third-person horizontal sensitivity to the game's base value.",
     RESTORE_WARN = "Third-person horizontal sensitivity will be restored to the game's default value, along with the addon options.",
     LANG_DD = "Select language",
-    LANG_DD_TT = "Automatic uses Spanish for Spanish clients; every other client language uses English.",
+    LANG_DD_TT = "Local language used when EZOCore is not installed or its language mode is 'Let each addon choose'. Central EZOCore language choices disable this selector.",
     LANG_AUTO = "Automatic (client)",
     LANG_ES = "Spanish",
     LANG_EN = "English",
@@ -394,17 +480,8 @@ local STR = {
 }
 
 function ADDON:InitLocale()
-  local sel = (self.sv and self.sv.language) or "auto"
-  local lang = "en"
-  if sel == "auto" then
-    local ok, v = pcall(GetCVar, "Language.2")
-    if ok and type(v) == "string" then
-      v = string.lower(v)
-      if string.sub(v, 1, 2) == "es" then lang = "es" end
-    end
-  elseif sel == "es" then
-    lang = "es"
-  end
+  local sel = (self.sv and self.sv.language) or self:GetDefaultLanguage()
+  local lang = self:GetEffectiveLanguage(sel)
   self.lang = lang
   self.str = STR[lang] or STR.en
 end

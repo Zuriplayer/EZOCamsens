@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.7.17 - EZO settings panel style
 
 - Registers the settings panel with EZOCore when available, so EZOcamsens appears under the central `Settings > EZO` menu.
 - Embeds its controls directly in the native EZO settings window when EZOCore is available.
 - Registers the standalone LibAddonMenu panel only as a compatibility fallback when EZOCore is unavailable, avoiding duplicate settings entries.
 - Adds the permanent EZO Discord feedback link to the panel header.
+- Reformats the settings panel with EZO-style informational section headers.
+- Moves general panel explanations into section tooltips and field-specific help into field tooltips.
 
 ## 1.7.16 - Public beta
 
