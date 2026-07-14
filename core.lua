@@ -414,6 +414,12 @@ function ADDON:Text(key)
 end
 
 function ADDON:RefreshLAM()
+  if self.ezoSettingsRegistered
+      and EZOCore
+      and type(EZOCore.RefreshSettingsPanel) == "function" then
+    EZOCore:RefreshSettingsPanel()
+  end
+
   if self.lamPanel then
     CALLBACK_MANAGER:FireCallbacks("LAM-RefreshPanel", self.lamPanel)
   end

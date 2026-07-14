@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Registers the settings panel with EZOCore when available, so EZOcamsens appears under the central `Settings > EZO` menu.
+- Keeps the existing LibAddonMenu panel as a fallback when EZOCore is not installed.
+
 ## 1.7.16 - Public beta
 
 - Stabilized the addon around third-person horizontal controller sensitivity.

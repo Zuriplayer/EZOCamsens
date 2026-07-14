@@ -23,6 +23,7 @@ This addon is in public beta. It is intentionally small and conservative:
 - LibAddonMenu-2.0.
 - LibChatMessage.
 - Optional: LibDebugLogger and DebugLogViewer for debug output.
+- Optional: EZOCore to place the addon options under the central `Settings > EZO` menu.
 
 ## Installation
 
@@ -53,6 +54,8 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 - Supports English and Spanish UI text.
 
 ## Addon Options
+
+When EZOCore is installed, these options appear under `Settings > EZO`. Without EZOCore, the addon keeps its normal LibAddonMenu panel.
 
 - Settings storage:
   - Per character.

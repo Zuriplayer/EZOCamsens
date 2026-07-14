@@ -1,4 +1,5 @@
 local ADDON = EZOcamsens
+local PANEL_ID = "EZOcamsensPanel"
 
 function ADDON:SetupMenu()
   local LAM = LibAddonMenu2
@@ -12,9 +13,6 @@ function ADDON:SetupMenu()
     registerForRefresh = true,
     registerForDefaults = false,
   }
-  if not ADDON.lamPanel then
-    ADDON.lamPanel = LAM:RegisterAddonPanel("EZOcamsensPanel", panelData)
-  end
 
   local function applyBaseIfNeeded()
     if ADDON.sv.dynamicEnabled then
@@ -147,5 +145,17 @@ function ADDON:SetupMenu()
       func=function() ADDON:ResetToDefaults() end },
   }
 
-  LAM:RegisterOptionControls("EZOcamsensPanel", options)
+  if EZOCore and type(EZOCore.RegisterSettingsPanel) == "function" then
+    local registered = EZOCore:RegisterSettingsPanel(ADDON.name, PANEL_ID, panelData, options)
+    if registered then
+      ADDON.ezoSettingsRegistered = true
+      ADDON.lamPanel = nil
+      return
+    end
+  end
+
+  if not ADDON.lamPanel then
+    ADDON.lamPanel = LAM:RegisterAddonPanel(PANEL_ID, panelData)
+  end
+  LAM:RegisterOptionControls(PANEL_ID, options)
 end
