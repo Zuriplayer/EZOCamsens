@@ -23,7 +23,7 @@ function ADDON:SetupMenu()
     name = "E|cB040FFZ|rOcamsens",
     author = ADDON:Text("AUTHOR"),
     version = ADDON.version,
-    ezoStage = "beta",
+    ezoStage = "archived",
     feedback = "https://discord.gg/ekw8zUAcRm",
     registerForRefresh = true,
     registerForDefaults = false,
