@@ -4,6 +4,7 @@
 
 - Registers the settings panel with EZOCore when available, so EZOcamsens appears under the central `Settings > EZO` menu.
 - Keeps the existing LibAddonMenu panel available as a compatibility fallback.
+- Passes the real LibAddonMenu panel handle to EZOCore so the central EZO hub can open it reliably.
 
 ## 1.7.16 - Public beta
 

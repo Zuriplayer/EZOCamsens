@@ -151,7 +151,7 @@ function ADDON:SetupMenu()
   LAM:RegisterOptionControls(PANEL_ID, options)
 
   if EZOCore and type(EZOCore.RegisterSettingsPanel) == "function" then
-    local registered = EZOCore:RegisterSettingsPanel(ADDON.name, PANEL_ID, panelData, options)
+    local registered = EZOCore:RegisterSettingsPanel(ADDON.name, PANEL_ID, panelData, options, ADDON.lamPanel)
     if registered then
       ADDON.ezoSettingsRegistered = true
     end
