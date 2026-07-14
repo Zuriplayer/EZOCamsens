@@ -55,7 +55,7 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 
 ## Opciones Del Addon
 
-Cuando EZOCore está instalado, estas opciones aparecen bajo `Settings > EZO`. Sin EZOCore, el addon mantiene su panel normal de LibAddonMenu.
+Cuando EZOCore está instalado, estas opciones aparecen bajo `Settings > EZO`. El panel normal de LibAddonMenu sigue disponible como fallback de compatibilidad.
 
 - Guardado de ajustes:
   - Por personaje.
