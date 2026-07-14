@@ -10,6 +10,7 @@ function ADDON:SetupMenu()
     name = "E|cB040FFZ|rOcamsens",
     author = ADDON:Text("AUTHOR"),
     version = ADDON.version,
+    feedback = "https://discord.gg/ekw8zUAcRm",
     registerForRefresh = true,
     registerForDefaults = false,
   }
@@ -145,15 +146,16 @@ function ADDON:SetupMenu()
       func=function() ADDON:ResetToDefaults() end },
   }
 
+  if EZOCore and type(EZOCore.RegisterSettingsPanel) == "function" then
+    local registered = EZOCore:RegisterSettingsPanel(ADDON.name, PANEL_ID, panelData, options)
+    if registered then
+      ADDON.ezoSettingsRegistered = true
+      return
+    end
+  end
+
   if not ADDON.lamPanel then
     ADDON.lamPanel = LAM:RegisterAddonPanel(PANEL_ID, panelData)
   end
   LAM:RegisterOptionControls(PANEL_ID, options)
-
-  if EZOCore and type(EZOCore.RegisterSettingsPanel) == "function" then
-    local registered = EZOCore:RegisterSettingsPanel(ADDON.name, PANEL_ID, panelData, options, ADDON.lamPanel)
-    if registered then
-      ADDON.ezoSettingsRegistered = true
-    end
-  end
 end

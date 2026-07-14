@@ -55,7 +55,7 @@ Elder Scrolls Online/live/AddOns/EZOcamsens/
 
 ## Addon Options
 
-When EZOCore is installed, `Settings > EZO` opens the central EZO hub and links to this addon panel. The normal LibAddonMenu panel remains available as a compatibility fallback.
+When EZOCore is installed, EZOcamsens is configured directly inside `Settings > EZO` and does not add a duplicate entry to the standard addon settings list. Its standalone LibAddonMenu panel is registered only as a compatibility fallback when EZOCore is unavailable.
 
 - Settings storage:
   - Per character.
