@@ -244,6 +244,7 @@ function ADDON:OnLoaded(event, addonName)
   self:InitChat()
   self:InitLocale()
   if self.RegisterEZOCoreLanguageCallback then self:RegisterEZOCoreLanguageCallback() end
+  if self.RegisterWithEZOCore then self:RegisterWithEZOCore() end
   self:SetupMenu()
   if self.RefreshDynamicTurnAssist then self:RefreshDynamicTurnAssist(true) end
 

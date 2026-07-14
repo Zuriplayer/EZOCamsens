@@ -116,6 +116,31 @@ function ADDON:RegisterEZOCoreLanguageCallback()
   return self._ezoCoreLanguageCallbackRegistered
 end
 
+function ADDON:RegisterWithEZOCore()
+  if self._ezoCoreRegistered
+      or not (EZOCore and type(EZOCore.RegisterAddon) == "function") then
+    return false
+  end
+
+  local ok, result = pcall(function()
+    return EZOCore:RegisterAddon({
+      id = "ezocamsens",
+      name = self.name or "EZOcamsens",
+      version = self.version or "0.0.0",
+      addOnVersion = 10717,
+      apiVersion = 1,
+      capabilities = {
+        "camera.sensitivity",
+        "family.language.consumer",
+        "family.settings.consumer",
+      },
+    })
+  end)
+
+  self._ezoCoreRegistered = ok and result == true
+  return self._ezoCoreRegistered
+end
+
 function ADDON:EnsureDebugLogger()
   self.runtime = self.runtime or {}
   if self.runtime.debugLogger then
