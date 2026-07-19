@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.18 - Dependency metadata
+
+- Marks LibChatMessage as optional because the addon has a native chat fallback.
+
 ## 1.7.17 - EZO settings panel style
 
 - Registers the settings panel with EZOCore when available, so EZOcamsens appears under the central `Settings > EZO` menu.

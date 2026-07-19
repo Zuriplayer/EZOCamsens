@@ -21,7 +21,7 @@ Este addon está en beta pública. Es pequeño y conservador de forma intenciona
 
 - The Elder Scrolls Online.
 - LibAddonMenu-2.0.
-- LibChatMessage.
+- Opcional: LibChatMessage para dar formato a la salida de chat. La salida nativa sigue disponible sin ella.
 - Opcional: LibDebugLogger y DebugLogViewer para la salida de debug.
 - Opcional: EZOCore para mostrar las opciones del addon bajo el menú central `Settings > EZO`.
 

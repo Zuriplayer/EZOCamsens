@@ -1,4 +1,5 @@
 local ADDON = EZOcamsens
+local debugControllerRegistered = false
 
 function ADDON:InitChat()
   local ok, LCM = pcall(function() return LibChatMessage end)
@@ -127,10 +128,11 @@ function ADDON:RegisterWithEZOCore()
       id = "ezocamsens",
       name = self.name or "EZOcamsens",
       version = self.version or "0.0.0",
-      addOnVersion = 10717,
+      addOnVersion = 10718,
       apiVersion = 1,
       capabilities = {
         "camera.sensitivity",
+        "family.debug.controller",
         "family.language.consumer",
         "family.settings.consumer",
       },
@@ -139,6 +141,37 @@ function ADDON:RegisterWithEZOCore()
 
   self._ezoCoreRegistered = ok and result == true
   return self._ezoCoreRegistered
+end
+
+function ADDON:RegisterDebugWithEZOCore()
+  if debugControllerRegistered
+      or not (EZOCore and type(EZOCore.GetService) == "function") then
+    return false
+  end
+
+  local service = EZOCore:GetService("family.debug", 1)
+  if not service or type(service.RegisterController) ~= "function" then
+    return false
+  end
+
+  local ok, result = pcall(function()
+    return service:RegisterController({
+      id = "ezocamsens.debug",
+      addonId = "ezocamsens",
+      addonName = self.name or "EZOcamsens",
+      name = function() return self:Text("DEBUG_MODE") end,
+      isEnabled = function()
+        return self:IsDebugModeEnabled()
+      end,
+      setEnabled = function(enabled)
+        self:SetDebugModeEnabled(enabled == true)
+        return self:IsDebugModeEnabled() == (enabled == true)
+      end,
+    })
+  end)
+
+  debugControllerRegistered = ok and result == true
+  return debugControllerRegistered
 end
 
 function ADDON:EnsureDebugLogger()
